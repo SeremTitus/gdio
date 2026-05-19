@@ -7,3 +7,11 @@ description = "CLI tool for managing Godot Engine projects, editors and template
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false
