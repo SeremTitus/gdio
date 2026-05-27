@@ -105,6 +105,25 @@ impl Config {
         Self::get_godot_data_dir().join("export_templates")
     }
 
+    pub fn load() -> Result<Self> {
+        let path = Self::config_path();
+        if !path.exists() {
+            return Ok(Config::default());
+        }
+        let data = fs::read_to_string(&path).context("Failed to read config file")?;
+        let config: Config = serde_json::from_str(&data).context("Failed to parse config file")?;
+        Ok(config)
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let dir = Self::config_dir();
+        fs::create_dir_all(&dir).context("Failed to create config directory")?;
+        let path = Self::config_path();
+        let data = serde_json::to_string_pretty(self).context("Failed to serialize config")?;
+        fs::write(&path, data).context("Failed to write config file")?;
+        Ok(())
+    }
+
     pub fn register_editor(&mut self, editor: EditorInfo) {
         let key = editor.version.clone();
         self.editors.insert(key, editor);
