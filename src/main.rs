@@ -1,3 +1,8 @@
+mod config;
+mod github;
+mod godot;
+mod project;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -30,6 +35,8 @@ fn main() -> anyhow::Result<()> {
         println!("gdio {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+
+    let _config = config::Config::load()?;
 
     match cli.command {
         Some(Commands::List) => {
