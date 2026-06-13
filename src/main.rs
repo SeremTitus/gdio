@@ -1,4 +1,5 @@
 mod config;
+mod commands;
 mod github;
 mod godot;
 mod project;
@@ -36,11 +37,11 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let _config = config::Config::load()?;
+    let config = config::Config::load()?;
 
     match cli.command {
         Some(Commands::List) => {
-            println!("No editors registered.");
+            commands::list::run(&config)?;
         }
         None => {
             println!("Use --help for usage information.");
