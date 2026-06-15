@@ -27,6 +27,9 @@ struct Cli {
 enum Commands {
     /// List registered Godot editors
     List,
+
+    /// Open current project in game mode
+    Game,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -37,11 +40,14 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let config = config::Config::load()?;
+    let mut config = config::Config::load()?;
 
     match cli.command {
         Some(Commands::List) => {
             commands::list::run(&config)?;
+        }
+        Some(Commands::Game) => {
+            commands::game::run(&mut config)?;
         }
         None => {
             println!("Use --help for usage information.");
