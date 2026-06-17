@@ -30,6 +30,9 @@ enum Commands {
 
     /// Open current project in game mode
     Game,
+
+    /// Show disk space used by gdio
+    Cost,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -48,6 +51,9 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Commands::Game) => {
             commands::game::run(&mut config)?;
+        }
+        Some(Commands::Cost) => {
+            commands::cost::run(&config)?;
         }
         None => {
             println!("Use --help for usage information.");
