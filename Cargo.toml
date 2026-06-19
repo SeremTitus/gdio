@@ -14,6 +14,7 @@ reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], defau
 zip = "2"
 tokio = { version = "1", features = ["full"] }
 console = "0.15"
+dialoguer = { version = "0.11", features = ["fuzzy-select"] }
 
 [profile.release]
 opt-level = "z"
