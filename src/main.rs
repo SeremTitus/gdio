@@ -46,18 +46,20 @@ fn main() -> anyhow::Result<()> {
     let mut config = config::Config::load()?;
 
     match cli.command {
-        Some(Commands::List) => {
-            commands::list::run(&config)?;
-        }
-        Some(Commands::Game) => {
-            commands::game::run(&mut config)?;
-        }
-        Some(Commands::Cost) => {
-            commands::cost::run(&config)?;
-        }
         None => {
-            println!("Use --help for usage information.");
+            commands::default::run(&mut config)?;
         }
+        Some(cmd) => match cmd {
+            Commands::List => {
+                commands::list::run(&config)?;
+            }
+            Commands::Game => {
+                commands::game::run(&mut config)?;
+            }
+            Commands::Cost => {
+                commands::cost::run(&config)?;
+            }
+        },
     }
 
     Ok(())
