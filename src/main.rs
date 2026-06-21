@@ -28,6 +28,12 @@ enum Commands {
     /// List registered Godot editors
     List,
 
+    /// Remove a Godot editor
+    Remove {
+        /// Version or name of editor to remove (interactive if omitted)
+        target: Option<String>,
+    },
+
     /// Open current project in game mode
     Game,
 
@@ -52,6 +58,9 @@ fn main() -> anyhow::Result<()> {
         Some(cmd) => match cmd {
             Commands::List => {
                 commands::list::run(&config)?;
+            }
+            Commands::Remove { target } => {
+                commands::remove::run(target.as_deref(), &mut config)?;
             }
             Commands::Game => {
                 commands::game::run(&mut config)?;
