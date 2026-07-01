@@ -25,6 +25,20 @@ struct Cli {
 #[derive(Subcommand)]
 #[command(rename_all = "lowercase")]
 enum Commands {
+    /// Add a Godot editor (download by version or register local path)
+    Add {
+        /// Version to download (e.g., 4.7, 4.7-stable) or path to local executable
+        target: String,
+
+        /// Path to local Godot executable (when registering existing)
+        #[arg(short, long)]
+        path: Option<String>,
+
+        /// Download the C# (mono) variant
+        #[arg(long)]
+        csharp: bool,
+    },
+
     /// List registered Godot editors
     List,
 
@@ -56,6 +70,9 @@ fn main() -> anyhow::Result<()> {
             commands::default::run(&mut config)?;
         }
         Some(cmd) => match cmd {
+            Commands::Add { target, path, csharp } => {
+                commands::add::run(&target, path.as_deref(), csharp, &mut config)?;
+            }
             Commands::List => {
                 commands::list::run(&config)?;
             }
