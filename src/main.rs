@@ -14,7 +14,6 @@ use clap::{Parser, Subcommand};
     disable_version_flag = true
 )]
 struct Cli {
-    /// Print version
     #[arg(short = 'v', long = "version", action = clap::ArgAction::SetTrue)]
     version: bool,
 
@@ -25,33 +24,21 @@ struct Cli {
 #[derive(Subcommand)]
 #[command(rename_all = "lowercase")]
 enum Commands {
-    /// Add a Godot editor (download by version or register local path)
     Add {
-        /// Version to download (e.g., 4.7, 4.7-stable) or path to local executable
         target: String,
-
-        /// Path to local Godot executable (when registering existing)
         #[arg(short, long)]
         path: Option<String>,
-
-        /// Download the C# (mono) variant
         #[arg(long)]
         csharp: bool,
     },
-
-    /// List registered Godot editors
     List,
-
-    /// Remove a Godot editor
     Remove {
-        /// Version or name of editor to remove (interactive if omitted)
         target: Option<String>,
     },
-
-    /// Open current project in game mode
+    Bind {
+        target: Option<String>,
+    },
     Game,
-
-    /// Show disk space used by gdio
     Cost,
 }
 
@@ -78,6 +65,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::Remove { target } => {
                 commands::remove::run(target.as_deref(), &mut config)?;
+            }
+            Commands::Bind { target } => {
+                commands::bind::run(target.as_deref(), &mut config)?;
             }
             Commands::Game => {
                 commands::game::run(&mut config)?;
