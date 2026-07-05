@@ -39,6 +39,10 @@ enum Commands {
         target: Option<String>,
     },
     Game,
+    Uninstall {
+        #[arg(long)]
+        keep: bool,
+    },
     Cost,
 }
 
@@ -71,6 +75,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::Game => {
                 commands::game::run(&mut config)?;
+            }
+            Commands::Uninstall { keep } => {
+                commands::uninstall::run(keep)?;
             }
             Commands::Cost => {
                 commands::cost::run(&config)?;

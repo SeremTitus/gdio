@@ -5,3 +5,4 @@ pub mod cost;
 pub mod remove;
 pub mod add;
 pub mod bind;
+pub mod uninstall;
