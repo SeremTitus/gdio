@@ -17,6 +17,9 @@ struct Cli {
     #[arg(short = 'v', long = "version", action = clap::ArgAction::SetTrue)]
     version: bool,
 
+    #[arg(short = 'r', action = clap::ArgAction::SetTrue)]
+    recent: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -47,7 +50,10 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let raw_args: Vec<String> = std::env::args().collect();
+    let args: Vec<String> = raw_args.iter().map(|a| a.to_lowercase()).collect();
+    let args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    let cli = Cli::parse_from(args);
 
     if cli.version {
         println!("gdio {}", env!("CARGO_PKG_VERSION"));
@@ -55,6 +61,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut config = config::Config::load()?;
+
+    if cli.recent {
+        commands::recent::run(&mut config)?;
+        return Ok(());
+    }
 
     match cli.command {
         None => {
