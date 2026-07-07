@@ -6,3 +6,4 @@ pub mod remove;
 pub mod add;
 pub mod bind;
 pub mod uninstall;
+pub mod recent;
