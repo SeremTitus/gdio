@@ -1,0 +1,155 @@
+use anyhow::{Context, Result};
+use crate::config::Config;
+use crate::godot;
+use std::fmt;
+use std::fs;
+
+enum Renderer {
+    ForwardPlus,
+    Mobile,
+    Compatibility,
+}
+
+impl Renderer {
+    fn all() -> &'static [Renderer] {
+        &[Renderer::ForwardPlus, Renderer::Mobile, Renderer::Compatibility]
+    }
+
+    fn method(&self) -> &'static str {
+        match self {
+            Renderer::ForwardPlus => "forward_plus",
+            Renderer::Mobile => "mobile",
+            Renderer::Compatibility => "gl_compatibility",
+        }
+    }
+
+    fn mobile_method(&self) -> &'static str {
+        match self {
+            Renderer::ForwardPlus => "mobile",
+            Renderer::Mobile => "mobile",
+            Renderer::Compatibility => "gl_compatibility",
+        }
+    }
+
+    fn feature_name(&self) -> &'static str {
+        match self {
+            Renderer::ForwardPlus => "Forward Plus",
+            Renderer::Mobile => "Mobile",
+            Renderer::Compatibility => "GL Compatibility",
+        }
+    }
+}
+
+impl fmt::Display for Renderer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Renderer::ForwardPlus => write!(f, "Forward+"),
+            Renderer::Mobile => write!(f, "Mobile"),
+            Renderer::Compatibility => write!(f, "Compatibility"),
+        }
+    }
+}
+
+pub fn run(name: &str, config: &mut Config) -> Result<()> {
+    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+
+    if cwd.join("project.godot").exists() {
+        anyhow::bail!(
+            "Current directory is already a Godot project. \
+             Create new projects from a parent directory."
+        );
+    }
+
+    let project_dir = cwd.join(name);
+
+    if project_dir.exists() {
+        anyhow::bail!("Directory '{}' already exists", name);
+    }
+
+    let renderers = Renderer::all();
+    let renderer_names: Vec<String> = renderers.iter().map(|r| r.to_string()).collect();
+    let idx = dialoguer::FuzzySelect::new()
+        .with_prompt("Renderer")
+        .items(&renderer_names)
+        .default(0)
+        .interact()?;
+    let renderer = &renderers[idx];
+
+    fs::create_dir_all(&project_dir)
+        .with_context(|| format!("Failed to create directory: {}", project_dir.display()))?;
+
+    let project_file = project_dir.join("project.godot");
+    let content = format!(
+        r#"; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="{}"
+config/features=PackedStringArray("4.4", "{}")
+
+[rendering]
+
+renderer/rendering_method="{}"
+renderer/rendering_method.mobile="{}"
+"#,
+        name,
+        renderer.feature_name(),
+        renderer.method(),
+        renderer.mobile_method(),
+    );
+    fs::write(&project_file, content).context("Failed to write project.godot")?;
+
+    println!("Created project: {}", project_dir.display());
+
+    let editors: Vec<_> = config.editors.values().cloned().collect();
+    let mut options: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
+    options.push("[add editor]".to_string());
+
+    let idx = dialoguer::FuzzySelect::new()
+        .with_prompt("Open with editor")
+        .items(&options)
+        .default(0)
+        .interact()?;
+
+    let editor = if options[idx] == "[add editor]" {
+        let version: String = dialoguer::Input::new()
+            .with_prompt("Editor version (e.g. 4.7, 4.8-beta, or path to executable)")
+            .interact_text()?;
+
+        let csharp = dialoguer::Confirm::new()
+            .with_prompt("C# support?")
+            .default(false)
+            .interact()?;
+
+        crate::commands::add::run(&version, None, csharp, config)?;
+
+        let editors_after: Vec<_> = config.editors.values().cloned().collect();
+        match editors_after.last() {
+            Some(e) => e.clone(),
+            None => anyhow::bail!("Editor was not added"),
+        }
+    } else {
+        editors[idx].clone()
+    };
+    println!("Opening with {}...", editor.name);
+    godot::open_project_editor_mode(&editor.path, &project_file)?;
+
+    let now = crate::commands::default::chrono_now();
+    config.register_project(crate::config::ProjectInfo {
+        path: project_dir,
+        name: name.to_string(),
+        bound_editor: Some(editor.version.clone()),
+        last_opened: Some(now),
+    });
+    config.save()?;
+
+    Ok(())
+}

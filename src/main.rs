@@ -42,6 +42,9 @@ enum Commands {
         target: Option<String>,
     },
     Game,
+    New {
+        name: String,
+    },
     Uninstall {
         #[arg(long)]
         keep: bool,
@@ -86,6 +89,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::Game => {
                 commands::game::run(&mut config)?;
+            }
+            Commands::New { name } => {
+                commands::new::run(&name, &mut config)?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;
