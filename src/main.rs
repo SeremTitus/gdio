@@ -45,6 +45,7 @@ enum Commands {
     New {
         name: String,
     },
+    Projects,
     Uninstall {
         #[arg(long)]
         keep: bool,
@@ -92,6 +93,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::New { name } => {
                 commands::new::run(&name, &mut config)?;
+            }
+            Commands::Projects => {
+                commands::projects::run(&mut config)?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;

@@ -8,3 +8,4 @@ pub mod bind;
 pub mod uninstall;
 pub mod recent;
 pub mod new;
+pub mod projects;
