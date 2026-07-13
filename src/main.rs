@@ -46,6 +46,22 @@ enum Commands {
         name: String,
     },
     Projects,
+    Build {
+        #[arg(long)]
+        windows: bool,
+        #[arg(long)]
+        linux: bool,
+        #[arg(long)]
+        web: bool,
+        #[arg(long)]
+        macos: bool,
+        #[arg(long)]
+        ios: bool,
+        #[arg(long)]
+        android: bool,
+        #[arg(long)]
+        debug: bool,
+    },
     Uninstall {
         #[arg(long)]
         keep: bool,
@@ -96,6 +112,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::Projects => {
                 commands::projects::run(&mut config)?;
+            }
+            Commands::Build { windows, linux, web, macos, ios, android, debug } => {
+                commands::build::run(windows, linux, web, macos, ios, android, debug, &mut config)?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;
