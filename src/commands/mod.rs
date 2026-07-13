@@ -9,3 +9,4 @@ pub mod uninstall;
 pub mod recent;
 pub mod new;
 pub mod projects;
+pub mod build;
