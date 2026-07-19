@@ -16,6 +16,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
 
     let selected_editor = match target {
         Some(name) => {
+            // Try to find existing editor by version key or name
             let found = config.editors.iter().find(|(k, e)| {
                 k.contains(name)
                     || e.name.to_lowercase().contains(&name.to_lowercase())
@@ -25,6 +26,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             if let Some((_, editor)) = found {
                 editor.clone()
             } else {
+                // Editor not found - add it first
                 println!("Editor '{}' not found, downloading...", name);
                 let (ver, stage) = crate::commands::add::parse_version_arg(name)?;
                 let rt = tokio::runtime::Runtime::new()?;
@@ -37,6 +39,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
                         &ver, false, config,
                     ))?;
                 }
+                // Find the editor we just added
                 config.editors.iter().find(|(k, e)| {
                     k.contains(&ver)
                         || e.name.to_lowercase().contains(&ver.to_lowercase())
@@ -46,6 +49,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             }
         }
         None => {
+            // Interactive selection
             if config.editors.is_empty() {
                 println!("No editors installed. Use `gdio add` to install one first.");
                 return Ok(());
