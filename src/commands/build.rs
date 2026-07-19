@@ -36,13 +36,26 @@ pub fn run(
     let has_flag = windows || linux || web || macos || ios || android;
     let mut platforms = Vec::new();
     if has_flag {
-        if windows { platforms.push("windows".to_string()); }
-        if linux { platforms.push("linux".to_string()); }
-        if web { platforms.push("web".to_string()); }
-        if macos { platforms.push("macos".to_string()); }
-        if ios { platforms.push("ios".to_string()); }
-        if android { platforms.push("android".to_string()); }
+        if windows {
+            platforms.push("windows".to_string());
+        }
+        if linux {
+            platforms.push("linux".to_string());
+        }
+        if web {
+            platforms.push("web".to_string());
+        }
+        if macos {
+            platforms.push("macos".to_string());
+        }
+        if ios {
+            platforms.push("ios".to_string());
+        }
+        if android {
+            platforms.push("android".to_string());
+        }
     } else {
+        // No flags: auto-detect from export presets
         let mut seen = std::collections::HashSet::new();
         for preset in &presets {
             if let Some(gdio_platform) = project::godot_platform_to_gdio(&preset.platform)
@@ -73,6 +86,10 @@ pub fn run(
         .find_editor_for_version(&godot_version)
         .context(format!("No editor found for Godot {}", godot_version))?
         .clone();
+
+    for platform in &platforms {
+        ensure_templates(&godot_version, platform)?;
+    }
 
     let mut output_paths = Vec::new();
 
@@ -122,7 +139,7 @@ pub fn run(
             std::fs::create_dir_all(parent)?;
         }
 
-        println!("  -> {}", output_file.display());
+        println!("  → {}", output_file.display());
 
         if let Err(e) = crate::godot::open_headless_export(
             &editor.path,
@@ -146,5 +163,39 @@ pub fn run(
     for path in &output_paths {
         println!("  {}", path.display());
     }
+    Ok(())
+}
+
+fn ensure_templates(version: &str, platform: &str) -> Result<()> {
+    let godot_dir = Config::get_godot_templates_dir()
+        .join(format!("{}.stable", version));
+
+    if godot_dir.exists() {
+        let platforms = crate::commands::templates::detect_platforms(godot_dir.as_path())?;
+        if platforms.contains(&platform.to_string()) {
+            return Ok(());
+        }
+    }
+
+    println!("Export templates for {} {} not found.", version, platform);
+    let download = dialoguer::Confirm::new()
+        .with_prompt(format!(
+            "Download {} templates for Godot {}?",
+            platform, version
+        ))
+        .default(true)
+        .interact()?;
+
+    if download {
+        std::fs::create_dir_all(&godot_dir)?;
+        // Use templates add instead
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(crate::commands::templates::download_template_files(
+            version,
+            platform,
+            godot_dir.as_path(),
+        ))?;
+    }
+
     Ok(())
 }

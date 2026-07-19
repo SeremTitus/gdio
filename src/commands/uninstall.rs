@@ -10,6 +10,7 @@ pub fn run(keep: bool) -> Result<()> {
 
     println!("Uninstalling gdio...");
 
+    // Remove config directory
     if config_dir.exists() {
         if keep {
             println!("Kept config: {}", config_dir.display());
@@ -19,6 +20,7 @@ pub fn run(keep: bool) -> Result<()> {
         }
     }
 
+    // Remove install directory
     if install_dir.exists() {
         schedule_cleanup(&install_dir)?;
     }

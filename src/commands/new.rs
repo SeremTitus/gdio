@@ -66,6 +66,7 @@ pub fn run(name: &str, config: &mut Config) -> Result<()> {
         anyhow::bail!("Directory '{}' already exists", name);
     }
 
+    // Select renderer
     let renderers = Renderer::all();
     let renderer_names: Vec<String> = renderers.iter().map(|r| r.to_string()).collect();
     let idx = dialoguer::FuzzySelect::new()
@@ -75,9 +76,11 @@ pub fn run(name: &str, config: &mut Config) -> Result<()> {
         .interact()?;
     let renderer = &renderers[idx];
 
+    // Create project directory
     fs::create_dir_all(&project_dir)
         .with_context(|| format!("Failed to create directory: {}", project_dir.display()))?;
 
+    // Create project.godot
     let project_file = project_dir.join("project.godot");
     let content = format!(
         r#"; Engine configuration file.
@@ -109,6 +112,7 @@ renderer/rendering_method.mobile="{}"
 
     println!("Created project: {}", project_dir.display());
 
+    // Select editor and open
     let editors: Vec<_> = config.editors.values().cloned().collect();
     let mut options: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
     options.push("[add editor]".to_string());
@@ -142,6 +146,7 @@ renderer/rendering_method.mobile="{}"
     println!("Opening with {}...", editor.name);
     godot::open_project_editor_mode(&editor.path, &project_file)?;
 
+    // Register project
     let now = crate::commands::default::chrono_now();
     config.register_project(crate::config::ProjectInfo {
         path: project_dir,

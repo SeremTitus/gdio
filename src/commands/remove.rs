@@ -42,6 +42,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             }
         }
         None => {
+            // Interactive: show all editors
             let editors: Vec<_> = config.editors.iter().collect();
             let names: Vec<String> = editors
                 .iter()

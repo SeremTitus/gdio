@@ -29,6 +29,7 @@ fn looks_like_path(s: &str) -> bool {
 pub fn parse_version_arg(arg: &str) -> Result<(String, Option<String>)> {
     let (ver, flavor) = config::parse_version_flavor(arg);
     if flavor == "stable" {
+        // No explicit flavor specified
         Ok((arg.to_string(), None))
     } else {
         Ok((ver.to_string(), Some(flavor.to_string())))
@@ -122,6 +123,7 @@ pub async fn download_version_auto(
 
     let version_key = format!("{}-{}", version, stage);
 
+    // Check if this exact version already exists
     if let Some(existing) = config.editors.get(&version_key) {
         println!(
             "Already exists: {} ({})",

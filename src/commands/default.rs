@@ -60,8 +60,73 @@ pub fn run(config: &mut Config) -> Result<()> {
             return Ok(());
         }
 
+        // No editor found - prompt user
         println!("Godot {} editor not found.", version);
-        println!("Use `gdio add {}` to install it.", version);
+        let options = vec![
+            "Open with existing editor".to_string(),
+            format!("Download Godot {}", version),
+        ];
+
+        let selection = dialoguer::FuzzySelect::new()
+            .with_prompt("What would you like to do?")
+            .items(&options)
+            .default(0)
+            .interact()?;
+
+        match selection {
+            0 => {
+                let editors: Vec<_> = config.editors.values().cloned().collect();
+                if editors.is_empty() {
+                    println!("No editors installed. Use `gdio add` to install one.");
+                    return Ok(());
+                }
+                let names: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
+                let idx = dialoguer::FuzzySelect::new()
+                    .with_prompt("Select editor")
+                    .items(&names)
+                    .default(0)
+                    .interact()?;
+                let editor = &editors[idx];
+                godot::open_project_editor_mode(&editor.path, &project_file)?;
+
+                let now = chrono_now();
+                let editor_ver = editor.version.clone();
+                config.register_project(crate::config::ProjectInfo {
+                    path: cwd,
+                    name: project_name,
+                    bound_editor: Some(editor_ver),
+                    last_opened: Some(now),
+                });
+                config.save()?;
+            }
+            1 => {
+                let version = version.clone();
+                let rt = tokio::runtime::Runtime::new()?;
+                rt.block_on(async {
+                    let mut config = Config::load()?;
+                    crate::commands::add::download_version_auto(&version, false, &mut config)
+                        .await?;
+
+                    if let Some(editor) = config.find_editor_for_version(&version) {
+                        let project_file = std::env::current_dir()?.join("project.godot");
+                        godot::open_project_editor_mode(&editor.path, &project_file)?;
+                        let cwd = std::env::current_dir()?;
+                        let project_name = project::parse_project_name(&project_file)
+                            .unwrap_or_else(|| "Unknown Project".to_string());
+                        let now = chrono_now();
+                        config.register_project(crate::config::ProjectInfo {
+                            path: cwd,
+                            name: project_name,
+                            bound_editor: Some(editor.version.clone()),
+                            last_opened: Some(now),
+                        });
+                        config.save()?;
+                    }
+                    Ok::<(), anyhow::Error>(())
+                })?;
+            }
+            _ => {}
+        }
     } else {
         println!("Could not determine Godot version from project.godot");
         println!("Use `gdio --help` for usage information.");
