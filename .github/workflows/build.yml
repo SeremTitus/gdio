@@ -1,0 +1,115 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+            artifact: gdio-windows-x86_32.zip
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact: gdio-windows-x86_64.zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            artifact: gdio-windows-arm64.zip
+          # Linux
+          - target: i686-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: gdio-linux-x86_32.tar.gz
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: gdio-linux-x86_64.tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: gdio-linux-aarch64.tar.gz
+          # macOS
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact: gdio-macos-x86_64.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact: gdio-macos-aarch64.tar.gz
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux i686)
+        if: matrix.target == 'i686-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib
+          echo "CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=gcc" >> $GITHUB_ENV
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/gdio.exe" -DestinationPath "${{ matrix.artifact }}"
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          tar -czf "${{ matrix.artifact }}" -C "target/${{ matrix.target }}/release" gdio
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          compression-level: 0
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            gdio-windows-x86_32.zip
+            gdio-windows-x86_64.zip
+            gdio-windows-arm64.zip
+            gdio-linux-x86_32.tar.gz
+            gdio-linux-x86_64.tar.gz
+            gdio-linux-aarch64.tar.gz
+            gdio-macos-x86_64.tar.gz
+            gdio-macos-aarch64.tar.gz
