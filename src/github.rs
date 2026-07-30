@@ -160,8 +160,9 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
                 !name.contains("mono")
             };
             let is_console = name.contains("console");
-            let is_editor = name.ends_with(".zip")
-                || (!name.ends_with(".tpz") && !name.contains("export_templates"));
+            let lower_name = name.to_lowercase();
+            let is_editor = lower_name.ends_with(".zip")
+                || (!lower_name.ends_with(".tpz") && !name.contains("export_templates"));
             matches_platform
                 && matches_mono
                 && is_console
@@ -182,8 +183,9 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
         } else {
             !name.contains("mono")
         };
-        let is_editor = name.ends_with(".zip")
-            || (!name.ends_with(".tpz") && !name.contains("export_templates"));
+        let lower_name = name.to_lowercase();
+        let is_editor = lower_name.ends_with(".zip")
+            || (!lower_name.ends_with(".tpz") && !name.contains("export_templates"));
         matches_platform
             && matches_mono
             && is_editor
