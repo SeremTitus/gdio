@@ -103,8 +103,8 @@ pub fn run(config: &mut Config) -> Result<()> {
         .to_string();
 
     config.register_project(crate::config::ProjectInfo {
-        path: recent.path.clone(),
-        name: recent.name.clone(),
+        path: recent.path,
+        name: recent.name,
         bound_editor: Some(editor.version.clone()),
         last_opened: Some(now),
     });
