@@ -218,7 +218,7 @@ fn run_upload(
         if android { v.push("android".to_string()); }
         v
     } else {
-        unique_platforms.clone()
+        unique_platforms
     };
 
     // For each selected platform, pick a preset (prompt if multiple)

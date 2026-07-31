@@ -151,7 +151,7 @@ renderer/rendering_method.mobile="{}"
     config.register_project(crate::config::ProjectInfo {
         path: project_dir,
         name: name.to_string(),
-        bound_editor: Some(editor.version.clone()),
+        bound_editor: Some(editor.version),
         last_opened: Some(now),
     });
     config.save()?;
