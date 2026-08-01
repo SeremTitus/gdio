@@ -68,7 +68,7 @@ pub fn run(name: &str, config: &mut Config) -> Result<()> {
 
     // Select renderer
     let renderers = Renderer::all();
-    let renderer_names: Vec<String> = renderers.iter().map(|r| r.to_string()).collect();
+    let renderer_names: Vec<String> = renderers.iter().map(ToString::to_string).collect();
     let idx = dialoguer::FuzzySelect::new()
         .with_prompt("Renderer")
         .items(&renderer_names)
