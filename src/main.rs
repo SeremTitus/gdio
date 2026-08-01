@@ -232,7 +232,7 @@ enum TemplatesAction {
 fn main() -> anyhow::Result<()> {
     let raw_args: Vec<String> = std::env::args().collect();
     let args: Vec<String> = raw_args.iter().map(|a| a.to_lowercase()).collect();
-    let args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let cli = Cli::parse_from(args);
 
     if cli.version {

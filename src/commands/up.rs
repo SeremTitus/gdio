@@ -258,7 +258,7 @@ fn run_upload(
         if !version.is_empty() {
             let content = std::fs::read_to_string(&project_file)?;
             let new_line = format!("config/version=\"{}\"", version);
-            let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+            let mut lines: Vec<String> = content.lines().map(ToString::to_string).collect();
             let mut found = false;
             for line in &mut lines {
                 if line.trim().starts_with("config/version=") {
