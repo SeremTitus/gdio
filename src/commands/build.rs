@@ -12,7 +12,7 @@ pub fn run(
     ios: bool,
     android: bool,
     debug: bool,
-    config: &mut Config,
+    config: &Config,
 ) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
