@@ -155,7 +155,7 @@ fn run_upload(
     android: bool,
     debug: bool,
     name: bool,
-    config: &mut Config,
+    config: &Config,
 ) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");

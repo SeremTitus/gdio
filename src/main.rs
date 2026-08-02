@@ -266,7 +266,7 @@ fn main() -> anyhow::Result<()> {
                 commands::bind::run(target.as_deref(), &mut config)?;
             }
             Commands::Game => {
-                commands::game::run(&mut config)?;
+                commands::game::run(&config)?;
             }
             Commands::Recent => {
                 commands::recent::run(&mut config)?;
@@ -278,7 +278,7 @@ fn main() -> anyhow::Result<()> {
                 commands::new::run(&name, &mut config)?;
             }
             Commands::Build { windows, linux, web, macos, ios, android, debug } => {
-                commands::build::run(windows, linux, web, macos, ios, android, debug, &mut config)?;
+                commands::build::run(windows, linux, web, macos, ios, android, debug, &config)?;
             }
             Commands::Up { setup, windows, linux, web, macos, ios, android, debug, name } => {
                 commands::up::run(setup, windows, linux, web, macos, ios, android, debug, name, &mut config)?;

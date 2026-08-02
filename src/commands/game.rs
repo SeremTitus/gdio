@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::project;
 
-pub fn run(config: &mut Config) -> Result<()> {
+pub fn run(config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
