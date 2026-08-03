@@ -13,7 +13,7 @@ pub fn run(version: &str, path: Option<&str>, csharp: bool, config: &mut Config)
         return register_local(version, config);
     }
 
-    let (ver, stage) = parse_version_arg(version)?;
+    let (ver, stage) = parse_version_arg(version);
     let rt = tokio::runtime::Runtime::new()?;
     if let Some(stage) = stage {
         rt.block_on(download_version(&ver, &stage, csharp, config))
@@ -26,13 +26,13 @@ fn looks_like_path(s: &str) -> bool {
     s.contains('/') || s.contains('\\')
 }
 
-pub fn parse_version_arg(arg: &str) -> Result<(String, Option<String>)> {
+pub fn parse_version_arg(arg: &str) -> (String, Option<String>) {
     let (ver, flavor) = config::parse_version_flavor(arg);
     if flavor == "stable" {
         // No explicit flavor specified
-        Ok((arg.to_string(), None))
+        (arg.to_string(), None)
     } else {
-        Ok((ver.to_string(), Some(flavor.to_string())))
+        (ver.to_string(), Some(flavor.to_string()))
     }
 }
 

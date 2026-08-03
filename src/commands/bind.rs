@@ -28,7 +28,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             } else {
                 // Editor not found - add it first
                 println!("Editor '{}' not found, downloading...", name);
-                let (ver, stage) = crate::commands::add::parse_version_arg(name)?;
+                let (ver, stage) = crate::commands::add::parse_version_arg(name);
                 let rt = tokio::runtime::Runtime::new()?;
                 if let Some(stage) = stage {
                     rt.block_on(crate::commands::add::download_version(
