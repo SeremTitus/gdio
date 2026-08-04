@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::project;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
@@ -72,7 +73,6 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
 
     config.update_project_editor(&project_path, &selected_editor.version);
 
-    use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
