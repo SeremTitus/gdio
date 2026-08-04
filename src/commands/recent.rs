@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::godot;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run(config: &mut Config) -> Result<()> {
     if config.projects.is_empty() {
@@ -95,7 +96,6 @@ pub fn run(config: &mut Config) -> Result<()> {
 
     godot::open_project_editor_mode(&editor.path, &project_file)?;
 
-    use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
