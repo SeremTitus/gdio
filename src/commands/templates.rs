@@ -587,13 +587,13 @@ pub fn run_add(
                 .user_agent("gdio")
                 .build()?;
 
-            let mirrors_url = format!(
+            let mirror_list_url = format!(
                 "https://godotengine.org/mirrorlist/{}.{}.json",
                 base_version,
                 flavor
             );
             let resp = client
-                .get(&mirrors_url)
+                .get(&mirror_list_url)
                 .send()
                 .await
                 .context("Failed to fetch mirrors")?;
@@ -729,12 +729,12 @@ pub async fn download_template_files(
         .user_agent("gdio")
         .build()?;
 
-    let mirrors_url = format!(
+    let mirror_list_url = format!(
         "https://godotengine.org/mirrorlist/{}.{}.json",
         base_version, flavor
     );
     let resp = client
-        .get(&mirrors_url)
+        .get(&mirror_list_url)
         .send()
         .await
         .context("Failed to fetch mirrors")?;
