@@ -151,12 +151,13 @@ pub fn run(config: &mut Config) -> Result<()> {
         .as_secs()
         .to_string();
 
-    config.register_project(crate::config::ProjectInfo {
+    let project_info = crate::config::ProjectInfo {
         path: project.path,
         name: project.name,
         bound_editor: Some(editor.version.clone()),
         last_opened: Some(now),
-    });
+    };
+    config.register_project(&project_info);
     config.save()?;
     Ok(())
 }
