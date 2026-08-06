@@ -79,12 +79,13 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
         .as_secs()
         .to_string();
 
-    config.register_project(crate::config::ProjectInfo {
+    let project_info = crate::config::ProjectInfo {
         path: cwd,
         name: project_name,
         bound_editor: Some(selected_editor.version.clone()),
         last_opened: Some(now),
-    });
+    };
+    config.register_project(&project_info);
     config.save()?;
 
     println!("Bound project to: {}", selected_editor.name);

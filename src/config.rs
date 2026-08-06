@@ -147,7 +147,7 @@ impl Config {
         None
     }
 
-    pub fn register_project(&mut self, project: ProjectInfo) {
+    pub fn register_project(&mut self, project: &ProjectInfo) {
         self.projects
             .insert(project.path.to_string_lossy().to_string(), project.clone());
         self.recent_project = Some(project.path.to_string_lossy().to_string());

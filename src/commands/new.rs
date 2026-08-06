@@ -148,12 +148,13 @@ renderer/rendering_method.mobile="{}"
 
     // Register project
     let now = crate::commands::default::chrono_now();
-    config.register_project(crate::config::ProjectInfo {
+    let project_info = crate::config::ProjectInfo {
         path: project_dir,
         name: name.to_string(),
         bound_editor: Some(editor.version),
         last_opened: Some(now),
-    });
+    };
+    config.register_project(&project_info);
     config.save()?;
 
     Ok(())

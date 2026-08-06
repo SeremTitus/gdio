@@ -30,12 +30,13 @@ pub fn run(config: &mut Config) -> Result<()> {
         godot::open_project_editor_mode(&editor.path, &project_file)?;
 
         let now = chrono_now();
-        config.register_project(crate::config::ProjectInfo {
+        let project_info = crate::config::ProjectInfo {
             path: cwd,
             name: project_name,
             bound_editor: Some(editor_version.clone()),
             last_opened: Some(now),
-        });
+        };
+        config.register_project(&project_info);
         config.save()?;
         return Ok(());
     }
@@ -50,12 +51,13 @@ pub fn run(config: &mut Config) -> Result<()> {
             godot::open_project_editor_mode(&editor.path, &project_file)?;
 
             let now = chrono_now();
-            config.register_project(crate::config::ProjectInfo {
+            let project_info = crate::config::ProjectInfo {
                 path: cwd,
                 name: project_name,
                 bound_editor: Some(editor.version.clone()),
                 last_opened: Some(now),
-            });
+            };
+            config.register_project(&project_info);
             config.save()?;
             return Ok(());
         }
@@ -91,12 +93,13 @@ pub fn run(config: &mut Config) -> Result<()> {
 
                 let now = chrono_now();
                 let editor_ver = editor.version.clone();
-                config.register_project(crate::config::ProjectInfo {
+                let project_info = crate::config::ProjectInfo {
                     path: cwd,
                     name: project_name,
                     bound_editor: Some(editor_ver),
                     last_opened: Some(now),
-                });
+                };
+                config.register_project(&project_info);
                 config.save()?;
             }
             1 => {
@@ -114,12 +117,13 @@ pub fn run(config: &mut Config) -> Result<()> {
                         let project_name = project::parse_project_name(&project_file)
                             .unwrap_or_else(|| "Unknown Project".to_string());
                         let now = chrono_now();
-                        config.register_project(crate::config::ProjectInfo {
+                        let project_info = crate::config::ProjectInfo {
                             path: cwd,
                             name: project_name,
                             bound_editor: Some(editor.version.clone()),
                             last_opened: Some(now),
-                        });
+                        };
+                        config.register_project(&project_info);
                         config.save()?;
                     }
                     Ok::<(), anyhow::Error>(())
