@@ -207,7 +207,6 @@ pub fn format_relative_time(timestamp: &str) -> String {
         return "just now".to_string();
     }
     let diff = now - ts;
-    let _secs = diff % 60;
     let mins = diff / 60;
     let hours = mins / 60;
     let days = hours / 24;
