@@ -47,13 +47,11 @@ pub fn run(config: &mut Config) -> Result<()> {
                 .bound_editor
                 .as_ref()
                 .and_then(|v| config.find_editor_for_version(v))
-                .map(|e| e.name.clone())
-                .unwrap_or_else(|| "none".to_string());
+                .map_or_else(|| "none".to_string(), |e| e.name.clone());
             let time = p
                 .last_opened
                 .as_ref()
-                .map(|s| config::format_relative_time(s))
-                .unwrap_or_else(|| "never".to_string());
+                .map_or_else(|| "never".to_string(), |s| config::format_relative_time(s));
             let name: String = p.name.chars().take(37).collect();
             let name = if name.len() < p.name.len() {
                 format!("{}...", name)
