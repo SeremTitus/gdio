@@ -262,7 +262,7 @@ fn run_upload(
             let mut found = false;
             for line in &mut lines {
                 if line.trim().starts_with("config/version=") {
-                    *line = new_line.clone();
+                    line.clone_from(&new_line);
                     found = true;
                     break;
                 }

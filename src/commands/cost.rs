@@ -41,13 +41,11 @@ pub fn run(_config: &Config) {
 
     let binary_path = std::env::current_exe()
         .ok()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
+        .map_or_else(|| "unknown".to_string(), |p| p.to_string_lossy().to_string());
     let binary_size = std::env::current_exe()
         .ok()
         .and_then(|p| std::fs::metadata(p).ok())
-        .map(|m| m.len())
-        .unwrap_or(0);
+        .map_or(0, |m| m.len());
 
     let config_path = config_dir.join("config.json");
     let config_size = dir_size(&config_path);

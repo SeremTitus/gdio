@@ -139,7 +139,7 @@ pub fn run(config: &mut Config) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn chrono_now() -> String {
+pub fn chrono_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -4,7 +4,7 @@ pub fn run(config: &Config) {
     if config.editors.is_empty() {
         println!("No editors registered.");
         println!("Use `gdio add <version>` to download an editor.");
-        return Ok(());
+        return;
     }
 
     println!("{:<35} Path", "Name (version)");
