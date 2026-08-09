@@ -34,6 +34,6 @@ pub fn run(config: &Config) -> Result<()> {
     }
 
     println!("No editor found for this project.");
-    println!("Use `gdio add` to install an editor, then `gdio update` to bind it.");
+    println!("Use `gdio add` to install an editor, then `gdio bind` to bind it.");
     Ok(())
 }
