@@ -75,7 +75,7 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs()
         .to_string();
 
