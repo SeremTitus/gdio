@@ -4,7 +4,7 @@ use crate::config::{self, Config, EditorInfo, EditorSource};
 use crate::github;
 use std::path::PathBuf;
 
-pub fn run(version: &str, path: Option<&str>, csharp: bool, config: &mut Config) -> Result<()> {
+pub fn run(version: &str, path: Option<&str>, csharp: bool, config: &mut Config) -> Result<Option<EditorInfo>> {
     if let Some(local_path) = path {
         return register_local(local_path, config);
     }
@@ -41,7 +41,7 @@ pub async fn download_version(
     stage: &str,
     csharp: bool,
     config: &mut Config,
-) -> Result<()> {
+) -> Result<Option<EditorInfo>> {
     let version_key = format!("{}-{}", version, stage);
 
     if let Some(existing) = config.find_editor_for_version(&version_key) {
@@ -50,7 +50,7 @@ pub async fn download_version(
             existing.name,
             existing.path.display()
         );
-        return Ok(());
+        return Ok(None);
     }
 
     let editors_dir = Config::get_editors_dir();
@@ -99,16 +99,16 @@ pub async fn download_version(
     };
 
     println!("Registered: {} ({})", editor.name, editor.path.display());
-    config.register_editor(editor);
+    config.register_editor(editor.clone());
     config.save()?;
-    Ok(())
+    Ok(Some(editor))
 }
 
 pub async fn download_version_auto(
     version: &str,
     csharp: bool,
     config: &mut Config,
-) -> Result<()> {
+) -> Result<Option<EditorInfo>> {
     let editors_dir = Config::get_editors_dir();
     let suffix = if csharp {
         github::mono_dir_suffix()
@@ -130,7 +130,7 @@ pub async fn download_version_auto(
             existing.name,
             existing.path.display()
         );
-        return Ok(());
+        return Ok(None);
     }
 
     let filename = exe_path
@@ -167,12 +167,12 @@ pub async fn download_version_auto(
     };
 
     println!("Registered: {} ({})", editor.name, editor.path.display());
-    config.register_editor(editor);
+    config.register_editor(editor.clone());
     config.save()?;
-    Ok(())
+    Ok(Some(editor))
 }
 
-fn register_local(path_str: &str, config: &mut Config) -> Result<()> {
+fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorInfo>> {
     let path_str = path_str.trim_matches(|c| c == '"' || c == '\'');
     let path = PathBuf::from(path_str);
     if !path.exists() {
@@ -227,7 +227,7 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<()> {
     };
 
     println!("Registered: {} ({})", editor.name, path.display());
-    config.register_editor(editor);
+    config.register_editor(editor.clone());
     config.save()?;
-    Ok(())
+    Ok(Some(editor))
 }
