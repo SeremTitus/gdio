@@ -133,13 +133,9 @@ renderer/rendering_method.mobile="{}"
             .default(false)
             .interact()?;
 
-        crate::commands::add::run(&version, None, csharp, config)?;
-
-        let editors_after: Vec<_> = config.editors.values().cloned().collect();
-        match editors_after.last() {
-            Some(e) => e.clone(),
-            None => anyhow::bail!("Editor was not added"),
-        }
+        let added = crate::commands::add::run(&version, None, csharp, config)?
+            .context("Editor was not added")?;
+        added
     } else {
         editors[idx].clone()
     };
