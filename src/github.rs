@@ -266,16 +266,11 @@ pub async fn download_file(url: &str, dest: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn download_and_extract_editor(
-    version: &str,
+async fn download_and_extract(
+    asset: &GitHubAsset,
     stage: &str,
-    is_mono: bool,
     dest_dir: &Path,
 ) -> Result<(PathBuf, String)> {
-    let release = fetch_release(version, stage).await?;
-    let asset = find_editor_asset(&release, is_mono)
-        .context("No matching editor asset found for this platform")?;
-
     println!("Downloading {}...", asset.name);
 
     let downloads_dir = crate::config::Config::get_downloads_dir();
@@ -311,6 +306,18 @@ pub async fn download_and_extract_editor(
     Ok((exe, stage.to_string()))
 }
 
+pub async fn download_and_extract_editor(
+    version: &str,
+    stage: &str,
+    is_mono: bool,
+    dest_dir: &Path,
+) -> Result<(PathBuf, String)> {
+    let release = fetch_release(version, stage).await?;
+    let asset = find_editor_asset(&release, is_mono)
+        .context("No matching editor asset found for this platform")?;
+    download_and_extract(asset, stage, dest_dir).await
+}
+
 pub async fn download_and_extract_editor_auto(
     version: &str,
     is_mono: bool,
@@ -319,40 +326,7 @@ pub async fn download_and_extract_editor_auto(
     let (release, stage) = fetch_release_auto(version).await?;
     let asset = find_editor_asset(&release, is_mono)
         .context("No matching editor asset found for this platform")?;
-
-    println!("Downloading {}...", asset.name);
-
-    let downloads_dir = crate::config::Config::get_downloads_dir();
-    std::fs::create_dir_all(&downloads_dir)?;
-
-    let zip_path = downloads_dir.join(&asset.name);
-    download_file(&asset.browser_download_url, &zip_path).await?;
-
-    let file = std::fs::File::open(&zip_path)?;
-    let mut archive = zip::ZipArchive::new(file).context("Failed to open zip archive")?;
-
-    std::fs::create_dir_all(dest_dir)?;
-
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i)?;
-        let outpath = dest_dir.join(entry.mangled_name());
-
-        if entry.is_dir() {
-            std::fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(parent) = outpath.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            let mut outfile = std::fs::File::create(&outpath)?;
-            std::io::copy(&mut entry, &mut outfile)?;
-        }
-    }
-
-    let exe = find_executable_in_dir(dest_dir)?;
-
-    let _ = std::fs::remove_file(&zip_path);
-
-    Ok((exe, stage))
+    download_and_extract(asset, &stage, dest_dir).await
 }
 
 fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
