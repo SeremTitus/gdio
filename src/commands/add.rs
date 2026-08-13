@@ -36,15 +36,34 @@ pub fn parse_version_arg(arg: &str) -> (String, Option<String>) {
     }
 }
 
-pub async fn download_version(
-    version: &str,
-    stage: &str,
+fn resolve_editor_name(display_name: &str, config: &Config) -> Result<String> {
+    if let Some(existing) = config.editors.values().find(|e| e.name == display_name) {
+        let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
+        println!(
+            "{}",
+            Style::new().blue().apply_to(format!(
+                "'{}' taken by {} ({})",
+                display_name, source, existing.path.display()
+            ))
+        );
+        let input: String = dialoguer::Input::new()
+            .with_prompt("Choose another name")
+            .default(display_name.to_string())
+            .interact_text()?;
+        Ok(input)
+    } else {
+        Ok(display_name.to_string())
+    }
+}
+
+fn register_downloaded_editor(
+    exe_path: PathBuf,
+    version_key: &str,
+    is_mono: bool,
     csharp: bool,
     config: &mut Config,
 ) -> Result<Option<EditorInfo>> {
-    let version_key = format!("{}-{}", version, stage);
-
-    if let Some(existing) = config.find_editor_for_version(&version_key) {
+    if let Some(existing) = config.find_editor_for_version(version_key) {
         println!(
             "Already exists: {} ({})",
             existing.name,
@@ -53,6 +72,36 @@ pub async fn download_version(
         return Ok(None);
     }
 
+    let filename = exe_path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+    let (_parsed_version, display_name, is_mono_file) = github::parse_editor_name(&filename);
+
+    let editor_name = resolve_editor_name(&display_name, config)?;
+
+    let editor = EditorInfo {
+        name: editor_name,
+        path: exe_path,
+        version: version_key.to_string(),
+        is_mono: csharp || is_mono || is_mono_file,
+        source: EditorSource::Downloaded,
+    };
+
+    println!("Registered: {} ({})", editor.name, editor.path.display());
+    config.register_editor(editor.clone());
+    config.save()?;
+    Ok(Some(editor))
+}
+
+pub async fn download_version(
+    version: &str,
+    stage: &str,
+    csharp: bool,
+    config: &mut Config,
+) -> Result<Option<EditorInfo>> {
+    let version_key = format!("{}-{}", version, stage);
     let editors_dir = Config::get_editors_dir();
     let suffix = if csharp {
         github::mono_dir_suffix()
@@ -65,43 +114,7 @@ pub async fn download_version(
     let (exe_path, _stage) =
         github::download_and_extract_editor(version, stage, csharp, &dest_dir).await?;
 
-    let filename = exe_path
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let (_parsed_version, display_name, is_mono) = github::parse_editor_name(&filename);
-
-    let editor_name = if let Some(existing) = config.editors.values().find(|e| e.name == display_name) {
-        let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
-        println!(
-            "{}",
-            Style::new().blue().apply_to(format!(
-                "'{}' taken by {} ({})",
-                display_name, source, existing.path.display()
-            ))
-        );
-        let input: String = dialoguer::Input::new()
-            .with_prompt("Choose another name")
-            .default(display_name)
-            .interact_text()?;
-        input
-    } else {
-        display_name
-    };
-
-    let editor = EditorInfo {
-        name: editor_name,
-        path: exe_path,
-        version: version_key,
-        is_mono: csharp || is_mono,
-        source: EditorSource::Downloaded,
-    };
-
-    println!("Registered: {} ({})", editor.name, editor.path.display());
-    config.register_editor(editor.clone());
-    config.save()?;
-    Ok(Some(editor))
+    register_downloaded_editor(exe_path, &version_key, false, csharp, config)
 }
 
 pub async fn download_version_auto(
@@ -122,54 +135,7 @@ pub async fn download_version_auto(
         github::download_and_extract_editor_auto(version, csharp, &dest_dir).await?;
 
     let version_key = format!("{}-{}", version, stage);
-
-    // Check if this exact version already exists
-    if let Some(existing) = config.editors.get(&version_key) {
-        println!(
-            "Already exists: {} ({})",
-            existing.name,
-            existing.path.display()
-        );
-        return Ok(None);
-    }
-
-    let filename = exe_path
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let (_parsed_version, display_name, is_mono) = github::parse_editor_name(&filename);
-
-    let editor_name = if let Some(existing) = config.editors.values().find(|e| e.name == display_name) {
-        let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
-        println!(
-            "{}",
-            Style::new().blue().apply_to(format!(
-                "'{}' taken by {} ({})",
-                display_name, source, existing.path.display()
-            ))
-        );
-        let input: String = dialoguer::Input::new()
-            .with_prompt("Choose another name")
-            .default(display_name)
-            .interact_text()?;
-        input
-    } else {
-        display_name
-    };
-
-    let editor = EditorInfo {
-        name: editor_name,
-        path: exe_path,
-        version: version_key,
-        is_mono: csharp || is_mono,
-        source: EditorSource::Downloaded,
-    };
-
-    println!("Registered: {} ({})", editor.name, editor.path.display());
-    config.register_editor(editor.clone());
-    config.save()?;
-    Ok(Some(editor))
+    register_downloaded_editor(exe_path, &version_key, false, csharp, config)
 }
 
 fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorInfo>> {
