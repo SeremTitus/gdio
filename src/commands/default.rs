@@ -106,8 +106,7 @@ pub fn run(config: &mut Config) -> Result<()> {
                 let version = version.clone();
                 let rt = tokio::runtime::Runtime::new()?;
                 rt.block_on(async {
-                    let mut config = Config::load()?;
-                    crate::commands::add::download_version_auto(&version, false, &mut config)
+                    crate::commands::add::download_version_auto(&version, false, config)
                         .await?;
 
                     if let Some(editor) = config.find_editor_for_version(&version) {
