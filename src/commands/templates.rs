@@ -477,9 +477,7 @@ fn print_template_tree(_dir: &Path, installed: &std::collections::HashSet<String
             }
 
             // For single-template platforms (macOS, Android, iOS), skip template level
-            if group.templates.len() == 1 {
-                // Skip showing template name for single-template platforms
-            } else {
+            if group.templates.len() > 1 {
                 println!("    {}", template.name);
             }
         }
