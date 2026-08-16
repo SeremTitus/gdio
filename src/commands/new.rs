@@ -133,9 +133,8 @@ renderer/rendering_method.mobile="{}"
             .default(false)
             .interact()?;
 
-        let added = crate::commands::add::run(&version, None, csharp, config)?
-            .context("Editor was not added")?;
-        added
+        crate::commands::add::run(&version, None, csharp, config)?
+            .context("Editor was not added")?
     } else {
         editors[idx].clone()
     };

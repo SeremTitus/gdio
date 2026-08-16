@@ -125,9 +125,8 @@ pub fn run(config: &mut Config) -> Result<()> {
                     .with_prompt("C# support?")
                     .default(false)
                     .interact()?;
-                let added = crate::commands::add::run(&version, None, csharp, config)?
-                    .context("Editor was not added")?;
-                added
+                crate::commands::add::run(&version, None, csharp, config)?
+                    .context("Editor was not added")?
             } else {
                 let editors: Vec<_> = config.editors.values().cloned().collect();
                 editors[idx].clone()
