@@ -1,10 +1,11 @@
+use anyhow::Result;
 use crate::config::Config;
 
-pub fn run(config: &Config) {
+pub fn run(config: &Config) -> Result<()> {
     if config.editors.is_empty() {
         println!("No editors registered.");
         println!("Use `gdio add <version>` to download an editor.");
-        return;
+        return Ok(());
     }
 
     println!("{:<35} Path", "Name (version)");
@@ -22,4 +23,5 @@ pub fn run(config: &Config) {
     }
 
     println!("\nTotal: {} editor(s)", config.editors.len());
+    Ok(())
 }

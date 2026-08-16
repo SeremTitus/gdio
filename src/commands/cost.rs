@@ -1,3 +1,4 @@
+use anyhow::Result;
 use crate::config::Config;
 use console::Style;
 
@@ -34,7 +35,7 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
-pub fn run(_config: &Config) {
+pub fn run(_config: &Config) -> Result<()> {
     let config_dir = Config::config_dir();
     let editors_dir = Config::get_editors_dir();
     let templates_dir = Config::get_godot_templates_dir();
@@ -70,4 +71,5 @@ pub fn run(_config: &Config) {
     println!("{}", "-".repeat(70));
     println!("  {} {:<12}", blue.apply_to("Total"), format_size(total));
     println!();
+    Ok(())
 }

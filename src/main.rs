@@ -257,7 +257,7 @@ fn main() -> anyhow::Result<()> {
                 commands::add::run(&target, path.as_deref(), csharp, &mut config)?;
             }
             Commands::List => {
-                commands::list::run(&config);
+                commands::list::run(&config)?;
             }
             Commands::Remove { target } => {
                 commands::remove::run(target.as_deref(), &mut config)?;
@@ -287,7 +287,7 @@ fn main() -> anyhow::Result<()> {
                 commands::uninstall::run(keep)?;
             }
             Commands::Cost => {
-                commands::cost::run(&config);
+                commands::cost::run(&config)?;
             }
             Commands::Templates { action } => match action {
                 None | Some(TemplatesAction::List) => {
