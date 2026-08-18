@@ -190,7 +190,9 @@ fn ensure_templates(version: &str, platform: &str) -> Result<()> {
         std::fs::create_dir_all(&godot_dir)?;
         // Use templates add instead
         let rt = tokio::runtime::Runtime::new()?;
+        let client = reqwest::Client::builder().user_agent("gdio").build()?;
         rt.block_on(crate::commands::templates::download_template_files(
+            &client,
             version,
             platform,
             godot_dir.as_path(),

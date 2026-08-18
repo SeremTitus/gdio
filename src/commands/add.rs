@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use console::Style;
 use crate::config::{self, Config, EditorInfo, EditorSource};
 use crate::github;
@@ -36,26 +36,6 @@ pub fn parse_version_arg(arg: &str) -> (String, Option<String>) {
     }
 }
 
-fn resolve_editor_name(display_name: &str, config: &Config) -> Result<String> {
-    if let Some(existing) = config.editors.values().find(|e| e.name == display_name) {
-        let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
-        println!(
-            "{}",
-            Style::new().blue().apply_to(format!(
-                "'{}' taken by {} ({})",
-                display_name, source, existing.path.display()
-            ))
-        );
-        let input: String = dialoguer::Input::new()
-            .with_prompt("Choose another name")
-            .default(display_name.to_string())
-            .interact_text()?;
-        Ok(input)
-    } else {
-        Ok(display_name.to_string())
-    }
-}
-
 fn register_downloaded_editor(
     exe_path: PathBuf,
     version_key: &str,
@@ -72,20 +52,17 @@ fn register_downloaded_editor(
         return Ok(None);
     }
 
-    let filename = exe_path
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-    let (_parsed_version, display_name, is_mono_file) = github::parse_editor_name(&filename);
-
-    let editor_name = resolve_editor_name(&display_name, config)?;
+    let editor_name = if csharp {
+        format!("Godot v{}-csharp", version_key)
+    } else {
+        format!("Godot v{}", version_key)
+    };
 
     let editor = EditorInfo {
         name: editor_name,
         path: exe_path,
         version: version_key.to_string(),
-        is_mono: csharp || is_mono || is_mono_file,
+        is_mono: csharp || is_mono,
         source: EditorSource::Downloaded,
     };
 
@@ -111,6 +88,16 @@ pub async fn download_version(
     let dir_name = format!("Godot_v{}-{}_{}", version, stage, suffix);
     let dest_dir = editors_dir.join(&dir_name);
 
+    // Check if executable already exists on disk
+    if let Ok(exe_path) = github::find_executable_in_dir(&dest_dir) {
+        println!("Already exists: {}", exe_path.display());
+        if let Some(existing) = config.find_editor_for_version(&version_key) {
+            println!("Already registered: {} ({})", existing.name, existing.path.display());
+            return Ok(None);
+        }
+        return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
+    }
+
     let (exe_path, _stage) =
         github::download_and_extract_editor(version, stage, csharp, &dest_dir).await?;
 
@@ -131,6 +118,33 @@ pub async fn download_version_auto(
     let dir_name = format!("Godot_v{}_{}", version, suffix);
     let dest_dir = editors_dir.join(&dir_name);
 
+    // Check if executable already exists on disk
+    if let Ok(exe_path) = github::find_executable_in_dir(&dest_dir) {
+        println!("Already exists: {}", exe_path.display());
+        // Determine the actual stage for this version from GitHub
+        let stage = match github::fetch_release_auto(version).await {
+            Ok((_, stage)) => stage,
+            Err(_) => {
+                // API failed — try to find an already-registered editor for this version prefix
+                if let Some(existing) = config.find_editor_for_version(version) {
+                    println!("Already registered: {} ({})", existing.name, existing.path.display());
+                    return Ok(None);
+                }
+                // API unavailable and no registered editor — default to "stable"
+                eprintln!("Warning: GitHub API unavailable, defaulting to 'stable' stage for '{}'", version);
+                "stable".to_string()
+            }
+        };
+        let version_key = format!("{}-{}", version, stage);
+        // Try to find and register if not in config
+        if let Some(existing) = config.find_editor_for_version(&version_key) {
+            println!("Already registered: {} ({})", existing.name, existing.path.display());
+            return Ok(None);
+        }
+        // Register existing executable
+        return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
+    }
+
     let (exe_path, stage) =
         github::download_and_extract_editor_auto(version, csharp, &dest_dir).await?;
 
@@ -145,50 +159,37 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
         anyhow::bail!("File not found: {}", path_str);
     }
 
-    let filename = path
-        .file_name()
-        .context("Invalid path")?
+    let default_name = path
+        .file_stem()
+        .unwrap_or_default()
         .to_string_lossy()
         .to_string();
 
-    let (version, display_name, is_mono) = github::parse_editor_name(&filename);
+    let editor_name = loop {
+        let input: String = dialoguer::Input::new()
+            .with_prompt("Editor name")
+            .default(default_name.clone())
+            .interact_text()?;
 
-    let needs_name = display_name == "Godot v." || display_name == "Godot vunknown" || version.is_empty() || version == "unknown";
-
-    let editor_name = if needs_name {
-        loop {
-            let input: String = dialoguer::Input::new()
-                .with_prompt("Editor name")
-                .interact_text()?;
-
-            if let Some(existing) = config.editors.values().find(|e| e.name == input) {
-                let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
-                println!(
-                    "{}",
-                    Style::new().blue().apply_to(format!(
-                        "'{}' taken by {} ({})",
-                        input, source, existing.path.display()
-                    ))
-                );
-                continue;
-            }
-            break input;
+        if let Some(existing) = config.editors.values().find(|e| e.name == input) {
+            let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
+            println!(
+                "{}",
+                Style::new().blue().apply_to(format!(
+                    "'{}' taken by {} ({})",
+                    input, source, existing.path.display()
+                ))
+            );
+            continue;
         }
-    } else {
-        display_name
-    };
-
-    let editor_version = if version.is_empty() || version == "unknown" {
-        "local".to_string()
-    } else {
-        version
+        break input;
     };
 
     let editor = EditorInfo {
         name: editor_name,
         path: path.clone(),
-        version: editor_version,
-        is_mono,
+        version: "local".to_string(),
+        is_mono: false,
         source: EditorSource::Local,
     };
 

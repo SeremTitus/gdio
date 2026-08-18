@@ -17,6 +17,9 @@ console = "0.15"
 flate2 = "1"
 walkdir = "2"
 anyhow = "1"
+futures-util = "0.3"
+indicatif = "0.17"
+tempfile = "3"
 
 [profile.release]
 opt-level = "z"
