@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use futures_util::stream::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
@@ -260,9 +262,26 @@ pub async fn download_file(url: &str, dest: &Path) -> Result<()> {
         anyhow::bail!("Download failed: HTTP {}", resp.status());
     }
 
+    let total_size = resp.content_length().unwrap_or(0);
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(ProgressStyle::default_bar()
+        .template("{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec})")
+        .unwrap_or_else(|_| ProgressStyle::default_bar())
+        .progress_chars("=>-"));
+    pb.set_message("Downloading");
+
     let mut file = std::fs::File::create(dest).context("Failed to create download file")?;
-    let content = resp.bytes().await.context("Failed to read download")?;
-    std::io::Write::write_all(&mut file, &content)?;
+    let mut stream = resp.bytes_stream();
+    let mut downloaded: u64 = 0;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.context("Failed to read chunk")?;
+        std::io::Write::write_all(&mut file, &chunk)?;
+        downloaded += chunk.len() as u64;
+        pb.set_position(downloaded);
+    }
+
+    pb.finish_and_clear();
     Ok(())
 }
 
@@ -329,7 +348,7 @@ pub async fn download_and_extract_editor_auto(
     download_and_extract(asset, &stage, dest_dir).await
 }
 
-fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
+pub fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
     let mut console_exe = None;
     let mut regular_exe = None;
 
@@ -379,29 +398,4 @@ fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
     console_exe
         .or(regular_exe)
         .ok_or_else(|| anyhow::anyhow!("No Godot executable found in extracted directory"))
-}
-
-pub fn parse_editor_name(filename: &str) -> (String, String, bool) {
-    let name = filename;
-    let is_mono = name.to_lowercase().contains("mono");
-
-    let version = if let Some(idx) = name.find('v') {
-        let after_v = &name[idx + 1..];
-        let end = after_v
-            .find(|c: char| !c.is_ascii_digit() && c != '.')
-            .unwrap_or(after_v.len());
-        after_v[..end].to_string()
-    } else if let Some(idx) = name.find(|c: char| c.is_ascii_digit()) {
-        let after = &name[idx..];
-        let end = after
-            .find(|c: char| !c.is_ascii_digit() && c != '.')
-            .unwrap_or(after.len());
-        after[..end].to_string()
-    } else {
-        "unknown".to_string()
-    };
-
-    let display = format!("Godot v{}", version);
-
-    (version, display, is_mono)
 }
