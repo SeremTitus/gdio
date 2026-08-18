@@ -110,7 +110,7 @@ function Get-InstalledVersion {
     }
     try {
         $output = & $exePath --version 2>&1 | Select-Object -First 1
-        if ($output -match 'v?([0-9]+\.[0-9]+\.[0-9]+)') {
+        if ($output -match 'v?([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)*)') {
             return $Matches[1]
         }
     } catch {}
