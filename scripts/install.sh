@@ -75,7 +75,7 @@ mkdir -p "$INSTALL_DIR"
 # Check installed version
 installed_version=""
 if [ -f "$INSTALL_DIR/$APP" ] || [ -f "$INSTALL_DIR/${APP}.exe" ]; then
-    installed_version=$("$INSTALL_DIR/$APP" --version 2>/dev/null | head -1 | sed -n 's/.*v\{0,1\}\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' || true)
+    installed_version=$("$INSTALL_DIR/$APP" --version 2>/dev/null | head -1 | sed -n 's/.*v\{0,1\}\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\(-[a-zA-Z0-9][a-zA-Z0-9]*\)*\).*/\1/p' || true)
 fi
 
 # Get latest version
