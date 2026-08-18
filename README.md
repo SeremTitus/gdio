@@ -209,4 +209,6 @@ gdio/
 
 ## Alternatives
 
-[godots](https://github.com/MakovWait/godots) - UI based
+- [godots](https://github.com/MakovWait/godots) - GUI based
+- [GodotHub](https://github.com/RykoTheDev/GodotHub) - GUI based
+- [godotenv](https://github.com/chickensoft-games/godotenv) - CLI based
