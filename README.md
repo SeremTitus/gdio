@@ -5,7 +5,7 @@
 <h1 align="center">gdio</h1>
 
 <p align="center">
-  CLI tool for managing Godot Engine projects, editor versions and export templates.
+  CLI tool for managing Godot Engine projects, editor versions, addons and export templates.
 </p>
 
 ## Build and Install
@@ -32,13 +32,13 @@ curl -fsSL https://gdio.seremtitus.co.ke/install.sh | bash
 
 ```bash
 cd my_godot_project
-gdio                                     # Open a project in the current directory
+gdio                                          # Open a project in the current directory
 
 
-gdio add 4.7                             # Add an editor
+gdio add 4.7                                  # Add an editor
 
 
-gdio list                                # List editors
+gdio list                                     # List editors
 ```
 
 ## Commands
@@ -56,10 +56,10 @@ Open the current directory's Godot project. Detects the required version from `p
 Download or register a Godot editor.
 
 ```bash
-gdio add 4.7                             # download stable (or latest available)
-gdio add 4.7-dev3                        # download a specific build
-gdio add 4.7 --csharp                    # download the C# (mono) variant
-gdio add /path/to/Godot.exe              # register a local editor
+gdio add 4.7                                  # download stable (or latest available)
+gdio add 4.7-dev3                             # download a specific build
+gdio add 4.7 --csharp                         # download the C# (mono) variant
+gdio add /path/to/Godot.exe                   # register a local editor
 ```
 
 ### `gdio list`
@@ -71,9 +71,9 @@ List all registered editors.
 Remove an editor. Downloaded editors are deleted from disk; local ones are just unregistered.
 
 ```bash
-gdio remove                              # interactive: select from all editors
-gdio remove 4.7                          # remove by version (interactive if multiple match)
-gdio remove "Godot v4.7"                 # remove by name
+gdio remove                                   # interactive: select from all editors
+gdio remove 4.7                               # remove by version (interactive if multiple match)
+gdio remove "Godot v4.7"                      # remove by name
 ```
 
 ### `gdio bind <version or name>`
@@ -81,9 +81,9 @@ gdio remove "Godot v4.7"                 # remove by name
 Bind a specific editor to the current project.
 
 ```bash
-gdio bind                                # interactive editor selection
-gdio bind 4.7                            # bind by version (downloads if not found)
-gdio bind "Godot v4.7"                   # bind by name
+gdio bind                                     # interactive editor selection
+gdio bind 4.7                                 # bind by version (downloads if not found)
+gdio bind "Godot v4.7"                        # bind by name
 ```
 
 ### `gdio game`
@@ -103,7 +103,7 @@ List all known projects with interactive selection to open in edit or game mode.
 Create a new Godot project in a subdirectory.
 
 ```bash
-gdio new MyGame                          # create project in ./MyGame/
+gdio new MyGame                               # create project in ./MyGame/
 ```
 
 ### `gdio build`
@@ -111,11 +111,11 @@ gdio new MyGame                          # create project in ./MyGame/
 Export the current project. Reads presets from `export_presets.cfg`.
 
 ```bash
-gdio build                               # all platforms (default)
-gdio build --windows                     # Windows only
-gdio build --linux --web                 # Linux + Web
-gdio build --macos --ios                 # macOS + iOS
-gdio build --android                     # Android
+gdio build                                    # all platforms (default)
+gdio build --windows                          # Windows only
+gdio build --linux --web                      # Linux + Web
+gdio build --macos --ios                      # macOS + iOS
+gdio build --android                          # Android
 ```
 
 Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
@@ -128,11 +128,11 @@ Downloads export templates on-demand if not found. Templates are stored in Godot
 Upload the current project to itch.io using [butler](https://itch.io/docs/butler/). Automatically builds the project first, then uploads each platform to its configured channel.
 
 ```bash
-gdio up --setup                          # interactive setup (butler path, game ID)
-gdio up                                  # build + upload all configured platforms
-gdio up --windows                        # build + upload Windows only
-gdio up --linux --web                    # build + upload Linux + Web
-gdio up --name                           # interactive channel name customization per platform
+gdio up --setup                               # interactive setup (butler path, game ID)
+gdio up                                       # build + upload all configured platforms
+gdio up --windows                             # build + upload Windows only
+gdio up --linux --web                         # build + upload Linux + Web
+gdio up --name                                # interactive channel name customization per platform
 ```
 
 Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
@@ -151,11 +151,11 @@ Run `gdio up --setup` from a Godot project directory to configure itch.io upload
 Manage export templates. Reads from and installs to Godot's native template directory.
 
 ```bash
-gdio templates list                      # show installed templates + variations
-gdio templates add 4.7                   # download all platforms
-gdio templates add 4.7 --windows --web   # download specific platforms
-gdio templates remove 4.7                # remove all templates
-gdio templates remove 4.7 --web          # remove only web templates
+gdio templates list                           # show installed templates + variations
+gdio templates add 4.7                        # download all platforms
+gdio templates add 4.7 --windows --web        # download specific platforms
+gdio templates remove 4.7                     # remove all templates
+gdio templates remove 4.7 --web               # remove only web templates
 ```
 
 Templates are stored where Godot expects them:
@@ -170,19 +170,79 @@ This means templates installed by the Godot editor are also visible to gdio.
 Remove gdio and all its files from your system.
 
 ```bash
-gdio uninstall                           # remove everything
-gdio uninstall --keep                    # keep config and editor binaries
+gdio uninstall                                # remove everything
+gdio uninstall --keep                         # keep config and editor binaries
 ```
 
 ### `gdio cost`
 
 Show disk space used by gdio components.
 
+### `gdio addons`
+
+Manage addons from the [Godot Asset Store](https://store.godotengine.org/) and third-party repositories.
+
+```bash
+gdio addons add seremtitus/ruzta              # install addon to current project
+gdio addons add seremtitus/ruzta --select     # interactively choose which version to install
+gdio addons list                              # list addons in current project
+
+gdio addons remove                            # interactive: select addon to remove
+gdio addons remove ruzta                      # remove addon by folder name
+gdio addons remove seremtitus/ruzta           # remove by identifier (also cleans .gdio tracking)
+
+gdio addons repository                        # list registered repositories
+gdio addons repository https://example.com    # toggle add/remove a repository
+```
+
+**Identifier format**: `publisher/asset` (e.g. `bitwes/gut`, `seremtitus/ruzta`)
+
+#### Linked addons (`--linked` / `-l`) [ADVANCED]
+
+```bash
+gdio addons add seremtitus/ruzta --linked     # Stores addon globally (symlinked into project)
+gdio addons list --linked                     # list linked addons
+
+gdio addons sync                              # sync linked and global addons
+```
+
+Stores the addon in gdio's global store (`<gdio config dir>/addons/`) and creates a symlink in the project. The symlink is added to `.gitignore` and tracked in a `.gdio` project file.
+
+`gdio addons sync` ensure `.gdio` addons are added. Runs automatically when you open a project with `gdio` (if a `.gdio` file exists).
+
+Switching modes: Re-running `gdio addons add` with or without `--linked` switches the installation mode. The previous install (symlink or local copy) is automatically removed.
+
+RISK: Not tracked by git, developer may delete addon from Asset Store.
+
+#### Global addons (`gdio addons globals`) [ADVANCED]
+
+```bash
+gdio addons globals seremtitus/ruzta          # add addon as global (synced to all projects, copied)
+gdio addons globals seremtitus/ruzta --linked # add as global, symlinked into each project
+gdio addons globals seremtitus/ruzta --select # add as global, interactively pick version
+
+gdio addons globals                           # list global addons (synced to all projects)
+gdio addons globals --remove                  # interactive: stop syncing a global addon
+
+gdio addons exclude seremtitus/ruzta          # exclude this project from a global addon
+gdio addons exclude --revert                  # interactive: revert an exclusion
+gdio addons exclude seremtitus/ruzta --revert # revert exclusion for a specific addon
+
+gdio addons sync                              # sync linked and global addons
+```
+
+Addons marked as global are synced to all projects unless excluded. Use `gdio addons globals <identifier>` to add an addon as global. Use `--remove` to interactively stop syncing an addon (does not remove it from existing projects).
+
+`gdio addons exclude`: Excludes the current project from receiving a global addon during sync. Use `--revert` to undo the exclusion and re-enable syncing.
+
+- **`--linked` / `-l`**: Store the addon in the global cache and symlink it into each project during sync (instead of copying).
+- **`--select` / `-s`**: Interactively pick a specific version to pin. Without this flag, each project gets the highest compatible version for its bound Godot version.
+
 ## Helper Flags
 
 ```bash
--h, --help                               # Print help (works at all levels)
--V, --version                            # Print version
+-h, --help                                    # Print help (works at all levels)
+-V, --version                                 # Print version
 ```
 
 ## Platforms Flags
@@ -202,9 +262,10 @@ Editor and project data stored in `%APPDATA%/gdio/` (Windows) or `~/.config/gdio
 
 ```
 gdio/
-├── config.json       # editor registry + project registry
+├── config.json       # editor registry + project registry + addon repos
 ├── editors/          # downloaded editor binaries
-└── downloads/        # temporary download directory
+├── downloads/        # temporary download directory
+└── addons/           # global addon store (for --global addons)
 ```
 
 ## Alternatives

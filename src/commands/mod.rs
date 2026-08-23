@@ -12,3 +12,4 @@ pub mod up;
 pub mod new;
 pub mod uninstall;
 pub mod cost;
+pub mod addons;

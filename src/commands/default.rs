@@ -20,6 +20,12 @@ pub fn run(config: &mut Config) -> Result<()> {
 
     println!("Found project: {} ({})", project_name, project_path);
 
+    // Auto-sync addons if .gdio file exists
+    let gdio_file = cwd.join(".gdio");
+    if gdio_file.exists() {
+        crate::commands::addons::sync::run_sync(config, &cwd)?;
+    }
+
     // Check if we've opened this project before
     if let Some(existing) = config.projects.get(&project_path)
         && let Some(ref editor_version) = existing.bound_editor
