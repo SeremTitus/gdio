@@ -35,11 +35,10 @@ enum Commands {
         target: String,
 
         /// Path to local Godot executable (when registering existing)
-        #[arg(short, long)]
         path: Option<String>,
 
         /// Download the C# (mono) variant
-        #[arg(long)]
+        #[arg(short, long)]
         csharp: bool,
     },
 
@@ -100,14 +99,14 @@ enum Commands {
         android: bool,
 
         /// Export in debug mode
-        #[arg(long)]
+        #[arg(short, long)]
         debug: bool,
     },
 
     /// Upload project to itch.io via butler
     Up {
         /// Run interactive setup for itch.io upload configuration
-        #[arg(long)]
+        #[arg(short, long)]
         setup: bool,
 
         /// Upload for Windows
@@ -135,18 +134,18 @@ enum Commands {
         android: bool,
 
         /// Export in debug mode before upload
-        #[arg(long)]
+        #[arg(short, long)]
         debug: bool,
 
         /// Interactively name zip files before upload
-        #[arg(long)]
+        #[arg(short, long)]
         name: bool,
     },
 
     /// Uninstall gdio and remove all its files
     Uninstall {
         /// Keep config and editor binaries
-        #[arg(long)]
+        #[arg(short, long)]
         keep: bool,
     },
 
@@ -262,7 +261,7 @@ enum AddonsAction {
         linked: bool,
 
         /// Interactively select which version to install
-        #[arg(short = 's', long)]
+        #[arg(short, long)]
         select: bool,
     },
 
@@ -303,7 +302,7 @@ enum AddonsAction {
         identifier: Option<String>,
 
         /// Revert the exclusion (re-add this project to the addon's sync list)
-        #[arg(short = 'r', long)]
+        #[arg(short, long)]
         revert: bool,
     },
 

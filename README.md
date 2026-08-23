@@ -119,7 +119,8 @@ gdio build --android                          # Android
 ```
 
 Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
-Export debug flag : `--debug`
+
+Export debug flag : `--debug`/`-d`
 
 Downloads export templates on-demand if not found. Templates are stored in Godot's native directory.
 
@@ -136,8 +137,10 @@ gdio up --name                                # interactive channel name customi
 ```
 
 Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
-Export debug flag : `--debug`
-Custom channel name flag : `--name` (default channel: `{platform}-v{version}`)
+
+Export debug flag : `--debug`/`-d`
+
+Custom channel name flag : `--name`/`-n` (default channel: `{platform}-v{version}`)
 
 #### Setup
 
@@ -192,6 +195,7 @@ gdio test test --visual                       # visual mode with specific folder
 ```
 
 `--init`/`-i` installs GUT. Without arguments, GUT reads `.gutconfig.json` if present, otherwise scans the project for `test_*.gd` files. 
+
 `--visual`/`-v` opens the GUT test runner window instead of running headless.
 
 ### `gdio addons`
