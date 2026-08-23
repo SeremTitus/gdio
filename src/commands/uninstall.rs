@@ -30,7 +30,7 @@ pub fn run(keep: bool) -> Result<()> {
     println!();
     print!("{UNINSTALL_ART}");
     println!();
-    println!("\x1b[32mThank you! for using me :)\x1b[0m");
+    println!("\x1b[32mThank you for using gdio! :)\x1b[0m");
     Ok(())
 }
 
