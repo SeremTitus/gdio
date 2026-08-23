@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use crate::config::Config;
+use crate::config::{self, Config};
 use crate::project;
 use console::Style;
 
@@ -182,8 +182,9 @@ pub fn run(
 }
 
 fn ensure_templates(version: &str, platform: &str) -> Result<()> {
+    let (base_version, flavor) = config::parse_version_flavor(version);
     let godot_dir = Config::get_godot_templates_dir()
-        .join(format!("{}.stable", version));
+        .join(format!("{}.{}", base_version, flavor));
 
     if godot_dir.exists() {
         let platforms = crate::commands::templates::detect_platforms(godot_dir.as_path())?;
