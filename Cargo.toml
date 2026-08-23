@@ -6,6 +6,7 @@ description = "CLI tool for managing Godot Engine projects, editor versions, add
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dirs = "6"

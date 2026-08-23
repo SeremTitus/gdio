@@ -5,7 +5,7 @@ mod godot;
 mod platform;
 mod project;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use platform::PlatformFlags;
 
 #[derive(Parser)]
@@ -137,6 +137,12 @@ enum Commands {
         #[command(subcommand)]
         action: Option<TemplatesAction>,
     },
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: clap_complete::Shell,
+    },
 }
 
 #[derive(Subcommand)]
@@ -239,6 +245,11 @@ fn main() -> anyhow::Result<()> {
 
     if cli.version {
         println!("gdio {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    if let Some(Commands::Completions { shell }) = cli.command {
+        clap_complete::generate(shell, &mut Cli::command(), "gdio", &mut std::io::stdout());
         return Ok(());
     }
 
@@ -372,6 +383,7 @@ fn main() -> anyhow::Result<()> {
                     commands::templates::remove::run(&godot_version, &platform, &mut config)?;
                 }
             },
+            Commands::Completions { .. } => unreachable!(),
         },
     }
 
