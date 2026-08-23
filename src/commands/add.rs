@@ -3,6 +3,7 @@ use console::Style;
 use crate::config::{self, Config, EditorInfo, EditorSource};
 use crate::github;
 use std::path::PathBuf;
+use std::process::Command;
 
 pub fn run(version: &str, path: Option<&str>, csharp: bool, config: &mut Config) -> Result<Option<EditorInfo>> {
     if let Some(local_path) = path {
@@ -159,6 +160,27 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
         anyhow::bail!("File not found: {}", path_str);
     }
 
+    let version = Command::new(&path)
+        .arg("--version")
+        .output()
+        .and_then(|output| {
+            if output.status.success() {
+                Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "process exited with non-zero status",
+                ))
+            }
+        })
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to run `{} --version`: {}",
+                path.display(),
+                e
+            )
+        })?;
+
     let default_name = path
         .file_stem()
         .unwrap_or_default()
@@ -188,7 +210,7 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
     let editor = EditorInfo {
         name: editor_name,
         path: path.clone(),
-        version: "local".to_string(),
+        version,
         is_mono: false,
         source: EditorSource::Local,
     };

@@ -72,9 +72,7 @@ pub fn run(
         println!("Detected platforms from presets: {}\n", platforms.join(", "));
     }
 
-    let godot_version = project::parse_godot_version(&project_file)
-        .context("Could not determine Godot version from project.godot")?;
-
+    let project_path = cwd.to_string_lossy().to_string();
     let project_name = project::parse_project_name(&project_file)
         .unwrap_or_else(|| "game".to_string());
     let project_snake: String = project_name
@@ -82,13 +80,30 @@ pub fn run(
         .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
         .collect();
 
+    let editor_version = config
+        .projects
+        .get(&project_path)
+        .and_then(|p| p.bound_editor.clone())
+        .context("No editor bound to this project. Use `gdio bind` to bind one.")?;
     let editor = config
-        .find_editor_for_version(&godot_version)
-        .context(format!("No editor found for Godot {}", godot_version))?
+        .find_editor_for_version(&editor_version)
+        .context(format!("Bound editor '{}' not found. Use `gdio bind` to rebind.", editor_version))?
         .clone();
+    let godot_version = editor.version.clone();
 
-    for platform in &platforms {
-        ensure_templates(&godot_version, platform)?;
+    for preset in &presets {
+        let preset_platform = match project::godot_platform_to_gdio(&preset.platform) {
+            Some(p) => p,
+            None => {
+                continue;
+            }
+        };
+
+        if !platforms.contains(&preset_platform.to_string()) {
+            continue;
+        }
+
+        ensure_templates(&godot_version, preset_platform)?;
     }
 
     let mut output_paths = Vec::new();

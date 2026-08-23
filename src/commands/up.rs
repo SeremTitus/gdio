@@ -240,8 +240,23 @@ fn run_upload(
     }
 
     // Export
-    let godot_version = project::parse_godot_version(&project_file)
-        .context("Could not determine Godot version from project.godot")?;
+    let editor = if let Some(editor_version) = config
+        .projects
+        .get(&project_path)
+        .and_then(|p| p.bound_editor.as_ref())
+    {
+        config
+            .find_editor_for_version(editor_version)
+            .cloned()
+            .context(format!("Bound editor '{}' not found. Use `gdio bind` to rebind.", editor_version))?
+    } else if let Some(version) = project::parse_godot_version(&project_file) {
+        config
+            .find_editor_for_version(&version)
+            .cloned()
+            .context(format!("No editor bound and no editor found for Godot {}. Use `gdio bind` to bind one.", version))?
+    } else {
+        anyhow::bail!("No editor bound to this project. Use `gdio bind` to bind one.");
+    };
 
     let game_version = project::parse_game_version(&project_file);
     let game_version_display = if game_version.is_empty() {
@@ -297,11 +312,6 @@ fn run_upload(
         };
         channels.insert(platform.clone(), channel);
     }
-
-    let editor = config
-        .find_editor_for_version(&godot_version)
-        .context(format!("No editor found for Godot {}", godot_version))?
-        .clone();
 
     if !editor.path.exists() {
         anyhow::bail!(
