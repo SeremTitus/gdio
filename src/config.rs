@@ -331,55 +331,7 @@ pub fn format_relative_time(timestamp: &str) -> String {
     if ts > now {
         return "just now".to_string();
     }
-    let diff = now - ts;
-    let mins = diff / 60;
-    let hours = mins / 60;
-    let days = hours / 24;
-    let weeks = days / 7;
-    let months = days / 30;
-    let years = days / 365;
-
-    if diff < 60 {
-        "just now".to_string()
-    } else if mins < 60 {
-        if mins == 1 {
-            "1 min ago".to_string()
-        } else {
-            format!("{} min ago", mins)
-        }
-    } else if hours < 24 {
-        let m = mins % 60;
-        if hours == 1 && m == 0 {
-            "1 h ago".to_string()
-        } else if m == 0 {
-            format!("{} h ago", hours)
-        } else if hours == 1 {
-            format!("1 h {} min ago", m)
-        } else {
-            format!("{} h {} min ago", hours, m)
-        }
-    } else if weeks < 4 {
-        let d = days % 7;
-        if weeks == 1 && d == 0 {
-            "1 week ago".to_string()
-        } else if d == 0 {
-            format!("{} weeks ago", weeks)
-        } else if weeks == 1 {
-            format!("1 week {} d ago", d)
-        } else {
-            format!("{} weeks {} d ago", weeks, d)
-        }
-    } else if months < 12 {
-        if months == 1 {
-            "1 month ago".to_string()
-        } else {
-            format!("{} months ago", months)
-        }
-    } else {
-        if years == 1 {
-            "1 year ago".to_string()
-        } else {
-            format!("{} years ago", years)
-        }
-    }
+    let diff = std::time::Duration::from_secs(now - ts);
+    let f = timeago::Formatter::new();
+    f.convert(diff)
 }
