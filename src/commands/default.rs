@@ -16,7 +16,6 @@ pub fn run(config: &mut Config) -> Result<()> {
     let project_path = cwd.to_string_lossy().to_string();
     let project_name = project::parse_project_name(&project_file)
         .unwrap_or_else(|| "Unknown Project".to_string());
-    let godot_version = project::parse_godot_version(&project_file);
 
     println!("Found project: {} ({})", project_name, project_path);
 
@@ -48,6 +47,7 @@ pub fn run(config: &mut Config) -> Result<()> {
     }
 
     // Try to find editor for detected version
+    let godot_version = project::parse_godot_version(&project_file);
     if let Some(ref version) = godot_version {
         println!("Project requires Godot {}", version);
         if let Some(editor) = config.find_editor_for_version(version)
