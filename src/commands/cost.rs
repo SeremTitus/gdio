@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::Config;
+use anyhow::Result;
 use console::Style;
 
 fn dir_size(path: &std::path::Path) -> u64 {
@@ -41,9 +41,10 @@ pub fn run(_config: &Config) -> Result<()> {
     let editors_dir = Config::get_editors_dir();
     let templates_dir = Config::get_godot_templates_dir();
 
-    let binary_path = std::env::current_exe()
-        .ok()
-        .map_or_else(|| "unknown".to_string(), |p| p.to_string_lossy().to_string());
+    let binary_path = std::env::current_exe().ok().map_or_else(
+        || "unknown".to_string(),
+        |p| p.to_string_lossy().to_string(),
+    );
     let binary_size = std::env::current_exe()
         .ok()
         .and_then(|p| std::fs::metadata(p).ok())
@@ -66,11 +67,36 @@ pub fn run(_config: &Config) -> Result<()> {
     println!("{}", "-".repeat(70));
     println!("  {:<25} {:<12} Path", "Component", "Size");
     println!("{}", "-".repeat(70));
-    println!("  {:<25} {:<12} {}", "Binary (gdio)", format_size(binary_size), dim.apply_to(&binary_path));
-    println!("  {:<25} {:<12} {}", "Config file", format_size(config_size), dim.apply_to(config_path.display()));
-    println!("  {:<25} {:<12} {}", "Linked addons", format_size(global_addons_size), dim.apply_to(global_addons_dir.display()));
-    println!("  {:<25} {:<12} {}", "Downloaded editors", format_size(editors_size), dim.apply_to(editors_dir.display()));
-    println!("  {:<25} {:<12} {}", "Export templates", format_size(templates_size), dim.apply_to(templates_dir.display()));
+    println!(
+        "  {:<25} {:<12} {}",
+        "Binary (gdio)",
+        format_size(binary_size),
+        dim.apply_to(&binary_path)
+    );
+    println!(
+        "  {:<25} {:<12} {}",
+        "Config file",
+        format_size(config_size),
+        dim.apply_to(config_path.display())
+    );
+    println!(
+        "  {:<25} {:<12} {}",
+        "Linked addons",
+        format_size(global_addons_size),
+        dim.apply_to(global_addons_dir.display())
+    );
+    println!(
+        "  {:<25} {:<12} {}",
+        "Downloaded editors",
+        format_size(editors_size),
+        dim.apply_to(editors_dir.display())
+    );
+    println!(
+        "  {:<25} {:<12} {}",
+        "Export templates",
+        format_size(templates_size),
+        dim.apply_to(templates_dir.display())
+    );
     println!("{}", "-".repeat(70));
     println!("  {} {:<12}", blue.apply_to("Total"), format_size(total));
     println!();

@@ -96,17 +96,20 @@ pub fn parse_export_presets(project_path: &Path) -> Vec<ExportPreset> {
             }
             in_preset = false;
         } else if in_preset {
-            if current_name.is_empty() && trimmed.starts_with("name=")
+            if current_name.is_empty()
+                && trimmed.starts_with("name=")
                 && let Some(start) = trimmed.find('"')
                 && let Some(end) = trimmed[start + 1..].find('"')
             {
                 current_name = trimmed[start + 1..start + 1 + end].to_string();
-            } else if current_platform.is_empty() && trimmed.starts_with("platform=")
+            } else if current_platform.is_empty()
+                && trimmed.starts_with("platform=")
                 && let Some(start) = trimmed.find('"')
                 && let Some(end) = trimmed[start + 1..].find('"')
             {
                 current_platform = trimmed[start + 1..start + 1 + end].to_string();
-            } else if current_export_path.is_none() && trimmed.starts_with("export_path=")
+            } else if current_export_path.is_none()
+                && trimmed.starts_with("export_path=")
                 && let Some(start) = trimmed.find('"')
                 && let Some(end) = trimmed[start + 1..].find('"')
             {

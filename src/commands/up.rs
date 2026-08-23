@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::project;
+use anyhow::{Context, Result};
 use console::Style;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -15,10 +15,7 @@ fn detect_butler() -> Option<String> {
         let version = version.trim().to_string();
         if !version.is_empty() {
             let butler_path = if cfg!(target_os = "windows") {
-                broth_dir
-                    .join("versions")
-                    .join(&version)
-                    .join("butler.exe")
+                broth_dir.join("versions").join(&version).join("butler.exe")
             } else {
                 broth_dir.join("versions").join(&version).join("butler")
             };
@@ -29,11 +26,7 @@ fn detect_butler() -> Option<String> {
         }
     }
 
-    if Command::new("butler")
-        .arg("--version")
-        .output()
-        .is_ok()
-    {
+    if Command::new("butler").arg("--version").output().is_ok() {
         return Some("butler".to_string());
     }
 
@@ -56,7 +49,9 @@ pub fn run(
     if setup {
         return run_setup(config);
     }
-    run_upload(windows, linux, web, macos, ios, android, debug, name, config)
+    run_upload(
+        windows, linux, web, macos, ios, android, debug, name, config,
+    )
 }
 
 fn run_setup(config: &mut Config) -> Result<()> {
@@ -64,7 +59,9 @@ fn run_setup(config: &mut Config) -> Result<()> {
     let project_file = cwd.join("project.godot");
 
     if !project_file.exists() {
-        anyhow::bail!("No Godot project found in current directory. Run this command from a directory containing a project.godot file.");
+        anyhow::bail!(
+            "No Godot project found in current directory. Run this command from a directory containing a project.godot file."
+        );
     }
 
     println!("=== itch.io upload setup ===\n");
@@ -79,12 +76,11 @@ fn run_setup(config: &mut Config) -> Result<()> {
         .default(default_butler)
         .interact_text()?;
 
-    let butler_path = butler_path.trim_matches(|c| c == '"' || c == '\'').to_string();
+    let butler_path = butler_path
+        .trim_matches(|c| c == '"' || c == '\'')
+        .to_string();
 
-    let butler_valid = Command::new(&butler_path)
-        .arg("--version")
-        .output()
-        .is_ok();
+    let butler_valid = Command::new(&butler_path).arg("--version").output().is_ok();
     if !butler_valid {
         anyhow::bail!(
             "Could not run butler at '{}'. Make sure it is installed and on your PATH.\n\
@@ -107,10 +103,7 @@ fn run_setup(config: &mut Config) -> Result<()> {
 
     let project_path = cwd.to_string_lossy().to_string();
 
-    config.set_itch_project(
-        &project_path,
-        crate::config::ItchProjectConfig { game },
-    );
+    config.set_itch_project(&project_path, crate::config::ItchProjectConfig { game });
     config.save()?;
 
     println!("\n✓ itch.io upload configured for this project.");
@@ -141,7 +134,13 @@ fn zip_dir(dir: &Path, zip_path: &Path) -> Result<()> {
 
 fn snake_case(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -169,9 +168,9 @@ fn run_upload(
         .context("No itch.io configuration found. Run 'gdio up --setup' first.")?;
 
     let project_path = cwd.to_string_lossy().to_string();
-    let itch_project = config
-        .get_itch_project(&project_path)
-        .context("This project is not configured for itch.io upload. Run 'gdio up --setup' first.")?;
+    let itch_project = config.get_itch_project(&project_path).context(
+        "This project is not configured for itch.io upload. Run 'gdio up --setup' first.",
+    )?;
 
     let butler_path = &itch.butler_path;
     let game = &itch_project.game;
@@ -210,12 +209,24 @@ fn run_upload(
     let has_flag = windows || linux || web || macos || ios || android;
     let platforms: Vec<String> = if has_flag {
         let mut v = Vec::new();
-        if windows { v.push("windows".to_string()); }
-        if linux { v.push("linux".to_string()); }
-        if web { v.push("web".to_string()); }
-        if macos { v.push("macos".to_string()); }
-        if ios { v.push("ios".to_string()); }
-        if android { v.push("android".to_string()); }
+        if windows {
+            v.push("windows".to_string());
+        }
+        if linux {
+            v.push("linux".to_string());
+        }
+        if web {
+            v.push("web".to_string());
+        }
+        if macos {
+            v.push("macos".to_string());
+        }
+        if ios {
+            v.push("ios".to_string());
+        }
+        if android {
+            v.push("android".to_string());
+        }
         v
     } else {
         unique_platforms
@@ -248,12 +259,18 @@ fn run_upload(
         config
             .find_editor_for_version(editor_version)
             .cloned()
-            .context(format!("Bound editor '{}' not found. Use `gdio bind` to rebind.", editor_version))?
+            .context(format!(
+                "Bound editor '{}' not found. Use `gdio bind` to rebind.",
+                editor_version
+            ))?
     } else if let Some(version) = project::parse_godot_version(&project_file) {
         config
             .find_editor_for_version(&version)
             .cloned()
-            .context(format!("No editor bound and no editor found for Godot {}. Use `gdio bind` to bind one.", version))?
+            .context(format!(
+                "No editor bound and no editor found for Godot {}. Use `gdio bind` to bind one.",
+                version
+            ))?
     } else {
         anyhow::bail!("No editor bound to this project. Use `gdio bind` to bind one.");
     };
@@ -292,8 +309,8 @@ fn run_upload(
         game_version
     };
 
-    let project_name = project::parse_project_name(&project_file)
-        .unwrap_or_else(|| "game".to_string());
+    let project_name =
+        project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
     let project_snake = snake_case(&project_name);
 
     // Determine channel names for each platform
@@ -339,7 +356,9 @@ fn run_upload(
         } else if preset_platform == "linux" {
             let preset_snake = snake_case(&preset.name);
             let arch = preset.binary_format.as_deref().unwrap_or("x86_64");
-            output_dir.join(&preset_snake).join(format!("{}.{}", project_snake, arch))
+            output_dir
+                .join(&preset_snake)
+                .join(format!("{}.{}", project_snake, arch))
         } else {
             let preset_snake = snake_case(&preset.name);
             let ext = match preset_platform.as_str() {
@@ -349,7 +368,9 @@ fn run_upload(
                 "android" => ".apk",
                 _ => "",
             };
-            output_dir.join(&preset_snake).join(format!("{}{}", project_snake, ext))
+            output_dir
+                .join(&preset_snake)
+                .join(format!("{}{}", project_snake, ext))
         };
 
         if let Some(parent) = output_file.parent() {
@@ -382,9 +403,10 @@ fn run_upload(
     std::fs::create_dir_all(&temp_dir)?;
 
     for (platform, export_path) in &exported {
-        let channel = channels
-            .get(platform.as_str())
-            .context(format!("No channel configured for platform '{}'.", platform))?;
+        let channel = channels.get(platform.as_str()).context(format!(
+            "No channel configured for platform '{}'.",
+            platform
+        ))?;
 
         let parent_dir = export_path.parent().unwrap_or(&output_dir);
         let zip_name = format!("{}-{}-v{}", project_name, platform, game_version_display);
@@ -397,7 +419,13 @@ fn run_upload(
         println!("  Uploading {} → {}...", platform, target);
 
         let status = Command::new(butler_path)
-            .args(["push", &zip_path.to_string_lossy(), &target, "--userversion", &game_version_display])
+            .args([
+                "push",
+                &zip_path.to_string_lossy(),
+                &target,
+                "--userversion",
+                &game_version_display,
+            ])
             .status()
             .with_context(|| format!("Failed to run butler at '{}'", butler_path))?;
 

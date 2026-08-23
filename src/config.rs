@@ -149,8 +149,7 @@ impl serde::Serialize for GdioProject {
 
 impl<'de> serde::Deserialize<'de> for GdioProject {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let addons: HashMap<String, GdioAddonEntry> =
-            HashMap::deserialize(deserializer)?;
+        let addons: HashMap<String, GdioAddonEntry> = HashMap::deserialize(deserializer)?;
         Ok(GdioProject { addons })
     }
 }
@@ -163,7 +162,6 @@ pub struct GdioAddonEntry {
     #[serde(default, skip_serializing_if = "is_default_repository")]
     pub repository: String,
 }
-
 
 fn is_default_repository(url: &str) -> bool {
     url == "https://store.godotengine.org" || url.is_empty()
@@ -344,7 +342,11 @@ pub fn format_relative_time(timestamp: &str) -> String {
     if diff < 60 {
         "just now".to_string()
     } else if mins < 60 {
-        if mins == 1 { "1 min ago".to_string() } else { format!("{} min ago", mins) }
+        if mins == 1 {
+            "1 min ago".to_string()
+        } else {
+            format!("{} min ago", mins)
+        }
     } else if hours < 24 {
         let m = mins % 60;
         if hours == 1 && m == 0 {
@@ -368,8 +370,16 @@ pub fn format_relative_time(timestamp: &str) -> String {
             format!("{} weeks {} d ago", weeks, d)
         }
     } else if months < 12 {
-        if months == 1 { "1 month ago".to_string() } else { format!("{} months ago", months) }
+        if months == 1 {
+            "1 month ago".to_string()
+        } else {
+            format!("{} months ago", months)
+        }
     } else {
-        if years == 1 { "1 year ago".to_string() } else { format!("{} years ago", years) }
+        if years == 1 {
+            "1 year ago".to_string()
+        } else {
+            format!("{} years ago", years)
+        }
     }
 }

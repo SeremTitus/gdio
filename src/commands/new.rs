@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::godot;
+use anyhow::{Context, Result};
 use std::fmt;
 use std::fs;
 
@@ -12,7 +12,11 @@ enum Renderer {
 
 impl Renderer {
     fn all() -> &'static [Renderer] {
-        &[Renderer::ForwardPlus, Renderer::Mobile, Renderer::Compatibility]
+        &[
+            Renderer::ForwardPlus,
+            Renderer::Mobile,
+            Renderer::Compatibility,
+        ]
     }
 
     fn method(&self) -> &'static str {

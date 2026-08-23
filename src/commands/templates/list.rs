@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::Config;
+use anyhow::Result;
 use std::path::Path;
 
 pub fn detect_platforms(dir: &Path) -> Result<Vec<String>> {

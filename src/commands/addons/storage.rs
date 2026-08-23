@@ -14,7 +14,11 @@ use crate::config::{GdioAddonEntry, GdioProject};
 /// (useful for global installs where the store dir shouldn't have an addons/ subdirectory).
 ///
 /// Returns the name of the addon folder (e.g. "gut" or "ruzta").
-pub fn extract_addon(zip_path: &Path, dest_dir: &Path, strip_addons_prefix: bool) -> Result<String> {
+pub fn extract_addon(
+    zip_path: &Path,
+    dest_dir: &Path,
+    strip_addons_prefix: bool,
+) -> Result<String> {
     // Open and read all entry names from the ZIP archive
     let file = std::fs::File::open(zip_path).context("Failed to open ZIP file")?;
     let mut archive = zip::ZipArchive::new(file).context("Failed to read ZIP archive")?;
@@ -42,7 +46,10 @@ pub fn extract_addon(zip_path: &Path, dest_dir: &Path, strip_addons_prefix: bool
         let rel_path = if let Some(ref prefix) = toplevel_prefix {
             // Skip the root directory entry itself (with or without trailing slash)
             let prefix_base = prefix.trim_end_matches('/');
-            if raw_name == *prefix || raw_name == prefix_base || raw_name == format!("{}/", prefix_base) {
+            if raw_name == *prefix
+                || raw_name == prefix_base
+                || raw_name == format!("{}/", prefix_base)
+            {
                 continue;
             }
             raw_name.strip_prefix(prefix).unwrap_or(&raw_name)
@@ -97,9 +104,10 @@ pub fn extract_addon(zip_path: &Path, dest_dir: &Path, strip_addons_prefix: bool
                     folder
                 };
                 if let Some(first) = name_component.split('/').next()
-                    && !first.is_empty() {
-                        addon_folder_name = first.to_string();
-                    }
+                    && !first.is_empty()
+                {
+                    addon_folder_name = first.to_string();
+                }
             }
         } else {
             // Ensure parent directories exist, then extract the file
@@ -224,7 +232,10 @@ pub fn remove_symlink(link: &Path) -> Result<()> {
         {
             // Safety: don't accidentally remove a real directory
             if link.is_dir() && !is_symlink(link) {
-                anyhow::bail!("Refusing to remove non-symlink directory: {}", link.display());
+                anyhow::bail!(
+                    "Refusing to remove non-symlink directory: {}",
+                    link.display()
+                );
             }
             std::fs::remove_dir(link).context("Failed to remove symlink")?;
         }
@@ -281,7 +292,10 @@ pub fn enable_plugin(project_dir: &Path, folder_name: &str) -> Result<()> {
         return Ok(());
     }
 
-    let plugin_cfg = project_dir.join("addons").join(folder_name).join("plugin.cfg");
+    let plugin_cfg = project_dir
+        .join("addons")
+        .join(folder_name)
+        .join("plugin.cfg");
     if !plugin_cfg.exists() {
         return Ok(());
     }
@@ -297,7 +311,11 @@ pub fn enable_plugin(project_dir: &Path, folder_name: &str) -> Result<()> {
 
     // Detect line ending style and normalize to \n for splitting
     let has_crlf = content.contains("\r\n");
-    let normalized = if has_crlf { content.replace("\r\n", "\n") } else { content };
+    let normalized = if has_crlf {
+        content.replace("\r\n", "\n")
+    } else {
+        content
+    };
 
     let mut lines: Vec<String> = normalized.split('\n').map(|s| s.to_string()).collect();
 
@@ -335,7 +353,8 @@ pub fn enable_plugin(project_dir: &Path, folder_name: &str) -> Result<()> {
                 let prefix = &line[..pos];
                 if prefix.contains("PackedStringArray(") && prefix.ends_with('"') {
                     let inner = &prefix["enabled=PackedStringArray(".len()..];
-                    lines[idx] = format!("enabled=PackedStringArray({},\"{}\")", inner, plugin_path);
+                    lines[idx] =
+                        format!("enabled=PackedStringArray({},\"{}\")", inner, plugin_path);
                 } else {
                     lines[idx] = format!("enabled=PackedStringArray(\"{}\")", plugin_path);
                 }
@@ -344,7 +363,10 @@ pub fn enable_plugin(project_dir: &Path, folder_name: &str) -> Result<()> {
             }
         } else {
             // No enabled= line — insert after section header
-            lines.insert(section_idx + 1, format!("enabled=PackedStringArray(\"{}\")", plugin_path));
+            lines.insert(
+                section_idx + 1,
+                format!("enabled=PackedStringArray(\"{}\")", plugin_path),
+            );
         }
     } else {
         // No [editor_plugins] section — append at end
@@ -408,7 +430,10 @@ pub fn find_local_addon_folder(project_dir: &Path, asset: &str) -> Option<String
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("name=") {
-                    let name = trimmed.split_once('=').map(|(_, v)| v.trim_matches('"')).unwrap_or("");
+                    let name = trimmed
+                        .split_once('=')
+                        .map(|(_, v)| v.trim_matches('"'))
+                        .unwrap_or("");
                     if name.eq_ignore_ascii_case(asset) {
                         return Some(entry.file_name().to_string_lossy().to_string());
                     }

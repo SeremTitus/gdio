@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-use crate::config::Config;
 use super::storage;
+use crate::config::Config;
+use anyhow::{Context, Result};
 
 /// List addons in the current project or globally linked addons.
 ///

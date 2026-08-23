@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::project;
+use anyhow::{Context, Result};
 
 pub fn run(config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
@@ -11,8 +11,8 @@ pub fn run(config: &Config) -> Result<()> {
     }
 
     let project_path = cwd.to_string_lossy().to_string();
-    let project_name = project::parse_project_name(&project_file)
-        .unwrap_or_else(|| "Unknown Project".to_string());
+    let project_name =
+        project::parse_project_name(&project_file).unwrap_or_else(|| "Unknown Project".to_string());
 
     // Find bound editor
     if let Some(existing) = config.projects.get(&project_path)

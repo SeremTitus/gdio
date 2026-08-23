@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
+use anyhow::{Context, Result};
 
 pub fn run(init: bool, visual: bool, folder: Option<&str>, config: &mut Config) -> Result<()> {
     if init {
@@ -100,9 +100,18 @@ fn run_init(_config: &mut Config) -> Result<()> {
         .max_by_key(|r| {
             let v = &r.version;
             let parts: Vec<&str> = v.split('.').collect();
-            let major = parts.first().map(|s| s.parse::<u32>().unwrap_or(0) * 10000).unwrap_or(0);
-            let minor = parts.get(1).map(|s| s.parse::<u32>().unwrap_or(0) * 100).unwrap_or(0);
-            let patch = parts.get(2).map(|s| s.parse::<u32>().unwrap_or(0)).unwrap_or(0);
+            let major = parts
+                .first()
+                .map(|s| s.parse::<u32>().unwrap_or(0) * 10000)
+                .unwrap_or(0);
+            let minor = parts
+                .get(1)
+                .map(|s| s.parse::<u32>().unwrap_or(0) * 100)
+                .unwrap_or(0);
+            let patch = parts
+                .get(2)
+                .map(|s| s.parse::<u32>().unwrap_or(0))
+                .unwrap_or(0);
             major + minor + patch
         })
         .or_else(|| releases.first())

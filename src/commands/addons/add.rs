@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
-use crate::config::{Config, LinkedAddonInfo};
 use super::api;
 use super::storage;
+use crate::config::{Config, LinkedAddonInfo};
+use anyhow::{Context, Result};
 
 /// Downloads and installs an addon from a Godot Asset Store repository.
 ///
@@ -27,7 +27,11 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
 
     // Get the bound Godot version for compatibility filtering
     let project_key = cwd.to_string_lossy().to_string();
-    let godot_version = match config.projects.get(&project_key).and_then(|p| p.bound_editor.clone()) {
+    let godot_version = match config
+        .projects
+        .get(&project_key)
+        .and_then(|p| p.bound_editor.clone())
+    {
         Some(v) => v,
         None => {
             anyhow::bail!("No Godot version bound to this project. Run `gdio bind` first.");
@@ -38,9 +42,7 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
 
     // Set up async runtime and HTTP client
     let rt = tokio::runtime::Runtime::new()?;
-    let client = reqwest::Client::builder()
-        .user_agent("gdio")
-        .build()?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     // Collect all compatible releases from all repositories
     let mut all_releases: Vec<(String, String, api::Release)> = Vec::new();
@@ -89,13 +91,21 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
             .interact()?;
         let picked = &all_releases[idx];
         println!("  Selected v{}", picked.2.version);
-        (picked.2.version.clone(), picked.2.download_url.clone(), picked.1.clone())
+        (
+            picked.2.version.clone(),
+            picked.2.download_url.clone(),
+            picked.1.clone(),
+        )
     } else {
         // Automatic selection: pick the best release
         match all_releases.first() {
             Some((repo_name, repo_url, release)) => {
                 println!("  Found v{} from {}", release.version, repo_name);
-                (release.version.clone(), release.download_url.clone(), repo_url.clone())
+                (
+                    release.version.clone(),
+                    release.download_url.clone(),
+                    repo_url.clone(),
+                )
             }
             None => {
                 anyhow::bail!("No compatible release found for {}", identifier);
@@ -106,7 +116,11 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
     // Detect current installation mode and handle switching
     let gdio = storage::read_gdio(&cwd);
     let currently_linked = gdio.addons.contains_key(identifier);
-    let current_folder = config.addons.linked.get(identifier).map(|g| g.folder_name.clone())
+    let current_folder = config
+        .addons
+        .linked
+        .get(identifier)
+        .map(|g| g.folder_name.clone())
         .or_else(|| storage::find_local_addon_folder(&cwd, asset));
 
     if currently_linked && !linked {
@@ -132,7 +146,10 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
         if should_remove_entry {
             let info = config.addons.linked.remove(identifier).unwrap();
             storage::cleanup_global_store(identifier, Some(&info.version));
-            println!("Removed {} from global store (no projects linked)", identifier);
+            println!(
+                "Removed {} from global store (no projects linked)",
+                identifier
+            );
         }
     } else if !currently_linked && linked && current_folder.is_some() {
         // Switching local → linked: remove the local directory
@@ -148,7 +165,11 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
     // Check if this version already exists in the global store (cache hit)
     let global_dir = Config::get_global_addons_dir();
     let addon_global_dir = global_dir.join(format!("{}_{}_{}", publisher, asset, version));
-    let cached = addon_global_dir.exists() && addon_global_dir.read_dir().map(|mut dirs| dirs.next().is_some()).unwrap_or(false);
+    let cached = addon_global_dir.exists()
+        && addon_global_dir
+            .read_dir()
+            .map(|mut dirs| dirs.next().is_some())
+            .unwrap_or(false);
 
     // Install based on the mode (linked or local)
     if linked {
@@ -164,7 +185,12 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
             let cache_dir = Config::get_addons_cache_dir();
             let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version);
             println!("Downloading {} v{}...", identifier, version);
-            let zip_path = rt.block_on(api::download_zip(&client, &download_url, &cache_dir, &zip_name))?;
+            let zip_path = rt.block_on(api::download_zip(
+                &client,
+                &download_url,
+                &cache_dir,
+                &zip_name,
+            ))?;
             println!("Extracting to global store...");
             let name = storage::extract_addon(&zip_path, &addon_global_dir, true)?;
             let _ = std::fs::remove_file(&zip_path);
@@ -183,11 +209,15 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
 
         // Register in the linked config for cross-project awareness
         let project_key = cwd.to_string_lossy().to_string();
-        let entry = config.addons.linked.entry(identifier.to_string()).or_insert_with(|| LinkedAddonInfo {
-            version: version.clone(),
-            folder_name: folder_name.clone(),
-            projects: Vec::new(),
-        });
+        let entry = config
+            .addons
+            .linked
+            .entry(identifier.to_string())
+            .or_insert_with(|| LinkedAddonInfo {
+                version: version.clone(),
+                folder_name: folder_name.clone(),
+                projects: Vec::new(),
+            });
         if !entry.projects.contains(&project_key) {
             entry.projects.push(project_key);
         }
@@ -213,7 +243,12 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
             let cache_dir = Config::get_addons_cache_dir();
             let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version);
             println!("Downloading {} v{}...", identifier, version);
-            let zip_path = rt.block_on(api::download_zip(&client, &download_url, &cache_dir, &zip_name))?;
+            let zip_path = rt.block_on(api::download_zip(
+                &client,
+                &download_url,
+                &cache_dir,
+                &zip_name,
+            ))?;
             println!("Extracting to project...");
             let name = storage::extract_addon(&zip_path, &cwd, false)?;
             let _ = std::fs::remove_file(&zip_path);
@@ -249,9 +284,7 @@ fn parse_identifier(identifier: &str) -> Result<(&str, &str)> {
 fn find_folder_name_in_store(store_dir: &std::path::Path) -> Result<String> {
     for entry in std::fs::read_dir(store_dir)? {
         let entry = entry?;
-        if entry.file_type()?.is_dir()
-            && entry.path().join("plugin.cfg").exists()
-        {
+        if entry.file_type()?.is_dir() && entry.path().join("plugin.cfg").exists() {
             return Ok(entry.file_name().to_string_lossy().to_string());
         }
     }

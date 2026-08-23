@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use crate::config::{Config, EditorSource};
+use anyhow::{Context, Result};
 
 pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
     if config.editors.is_empty() {

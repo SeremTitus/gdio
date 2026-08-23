@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::{self, Config};
+use anyhow::Result;
 
 #[allow(clippy::too_many_arguments)]
 pub fn run(
@@ -66,7 +66,11 @@ pub fn run(
             std::fs::remove_dir(&godot_dir)?;
         }
 
-        println!("Removed {} templates for Godot {}", platforms_to_remove.join(", "), version);
+        println!(
+            "Removed {} templates for Godot {}",
+            platforms_to_remove.join(", "),
+            version
+        );
     }
 
     Ok(())

@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::godot;
+use anyhow::{Context, Result};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run(config: &mut Config) -> Result<()> {
@@ -18,7 +18,11 @@ pub fn run(config: &mut Config) -> Result<()> {
     for project in &projects {
         let project_file = project.path.join("project.godot");
         if !project_file.exists() {
-            println!("Removed missing project: {} ({})", project.name, project.path.display());
+            println!(
+                "Removed missing project: {} ({})",
+                project.name,
+                project.path.display()
+            );
             config.remove_project(&project.path.to_string_lossy());
             removed_any = true;
         } else {
@@ -67,7 +71,8 @@ pub fn run(config: &mut Config) -> Result<()> {
     let editor = match editor {
         Some(e) => e,
         None => {
-            let mut options: Vec<String> = config.editors.values().map(|e| e.name.clone()).collect();
+            let mut options: Vec<String> =
+                config.editors.values().map(|e| e.name.clone()).collect();
             options.push("[add editor]".to_string());
 
             let idx = dialoguer::FuzzySelect::new()

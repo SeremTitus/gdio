@@ -59,9 +59,7 @@ pub async fn fetch_release(version: &str, stage: &str) -> Result<GitHubRelease> 
     let tag = format!("{}-{}", version, stage);
     let url = format!("{}/tags/{}", GITHUB_API, tag);
 
-    let client = reqwest::Client::builder()
-        .user_agent("gdio")
-        .build()?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     let resp = client
         .get(&url)
@@ -73,10 +71,7 @@ pub async fn fetch_release(version: &str, stage: &str) -> Result<GitHubRelease> 
         anyhow::bail!("Release {} not found (HTTP {})", tag, resp.status());
     }
 
-    let release: GitHubRelease = resp
-        .json()
-        .await
-        .context("Failed to parse release info")?;
+    let release: GitHubRelease = resp.json().await.context("Failed to parse release info")?;
     Ok(release)
 }
 
@@ -85,9 +80,7 @@ pub async fn fetch_release_auto(version: &str) -> Result<(GitHubRelease, String)
         return Ok((release, "stable".to_string()));
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent("gdio")
-        .build()?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     let url = format!("{}?per_page=100", GITHUB_API);
     let resp = client
@@ -100,10 +93,8 @@ pub async fn fetch_release_auto(version: &str) -> Result<(GitHubRelease, String)
         anyhow::bail!("Failed to fetch releases list (HTTP {})", resp.status());
     }
 
-    let releases: Vec<GitHubRelease> = resp
-        .json()
-        .await
-        .context("Failed to parse releases list")?;
+    let releases: Vec<GitHubRelease> =
+        resp.json().await.context("Failed to parse releases list")?;
 
     let prefix = format!("{}-", version);
     let mut candidates: Vec<(String, &GitHubRelease)> = releases
@@ -156,8 +147,7 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
     if cfg!(target_os = "windows") {
         let console = release.assets.iter().find(|a| {
             let name = &a.name;
-            let matches_platform =
-                name.contains(platform) || name.contains(&platform_underscored);
+            let matches_platform = name.contains(platform) || name.contains(&platform_underscored);
             let matches_mono = if is_mono {
                 name.contains("mono")
             } else {
@@ -181,8 +171,7 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
 
     release.assets.iter().find(|a| {
         let name = &a.name;
-        let matches_platform =
-            name.contains(platform) || name.contains(&platform_underscored);
+        let matches_platform = name.contains(platform) || name.contains(&platform_underscored);
         let matches_mono = if is_mono {
             name.contains("mono")
         } else {
@@ -225,9 +214,7 @@ pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
             "linux_debug.arm64",
             "linux_release.arm64",
         ],
-        "macos" => vec![
-            "macos.zip",
-        ],
+        "macos" => vec!["macos.zip"],
         "web" => vec![
             "web_debug.zip",
             "web_release.zip",
@@ -238,9 +225,7 @@ pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
             "web_dlink_nothreads_debug.zip",
             "web_dlink_nothreads_release.zip",
         ],
-        "ios" => vec![
-            "ios.zip",
-        ],
+        "ios" => vec!["ios.zip"],
         "android" => vec![
             "android_debug.apk",
             "android_release.apk",
@@ -251,9 +236,7 @@ pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
 }
 
 pub async fn download_file(url: &str, dest: &Path) -> Result<()> {
-    let client = reqwest::Client::builder()
-        .user_agent("gdio")
-        .build()?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     let resp = client
         .get(url)

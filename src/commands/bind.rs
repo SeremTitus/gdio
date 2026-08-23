@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::project;
+use anyhow::{Context, Result};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
@@ -12,8 +12,8 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
     }
 
     let project_path = cwd.to_string_lossy().to_string();
-    let project_name = project::parse_project_name(&project_file)
-        .unwrap_or_else(|| "Unknown Project".to_string());
+    let project_name =
+        project::parse_project_name(&project_file).unwrap_or_else(|| "Unknown Project".to_string());
 
     let selected_editor = match target {
         Some(name) => {
@@ -41,12 +41,14 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
                     ))?;
                 }
                 // Find the editor we just added
-                config.editors.iter().find(|(k, e)| {
-                    k.contains(&ver)
-                        || e.name.to_lowercase().contains(&ver.to_lowercase())
-                })
-                .map(|(_, e)| e.clone())
-                .context("Failed to find newly added editor")?
+                config
+                    .editors
+                    .iter()
+                    .find(|(k, e)| {
+                        k.contains(&ver) || e.name.to_lowercase().contains(&ver.to_lowercase())
+                    })
+                    .map(|(_, e)| e.clone())
+                    .context("Failed to find newly added editor")?
             }
         }
         None => {

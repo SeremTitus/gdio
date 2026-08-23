@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
-use crate::config::Config;
 use super::storage;
+use crate::config::Config;
+use anyhow::{Context, Result};
 
 /// Removes addon(s) by folder name or identifier from the current project.
-/// 
+///
 /// # Input formats
 /// - **Folder name** (e.g. `gut`): removes `addons/gut/` directly
 /// - **Identifier** (e.g. `seremtitus/ruzta`): looks up the folder name from config
@@ -74,7 +74,10 @@ pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
         let (folder_name, identifier) = if input.contains('/') {
             // Identifier format: look up folder name from config
             let folder = resolve_folder_name(config, input);
-            (folder.unwrap_or_else(|| input.split('/').next_back().unwrap_or(input).to_string()), Some(input.as_str()))
+            (
+                folder.unwrap_or_else(|| input.split('/').next_back().unwrap_or(input).to_string()),
+                Some(input.as_str()),
+            )
         } else {
             // Plain folder name
             (input.clone(), None)
@@ -113,7 +116,11 @@ pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
                 .find(|k| k.split('/').next_back().unwrap_or(k) == folder_name.as_str())
                 .or_else(|| {
                     config.addons.linked.iter().find_map(|(ident, info)| {
-                        if info.folder_name == folder_name { Some(ident) } else { None }
+                        if info.folder_name == folder_name {
+                            Some(ident)
+                        } else {
+                            None
+                        }
                     })
                 })
                 .cloned();
@@ -158,10 +165,7 @@ fn remove_project_reference(config: &mut Config, identifier: &str, project_key: 
     } else {
         false
     };
-    if should_remove
-        && let Some(info) = config.addons.linked.remove(identifier)
-    {
+    if should_remove && let Some(info) = config.addons.linked.remove(identifier) {
         storage::cleanup_global_store(identifier, Some(&info.version));
     }
 }
-

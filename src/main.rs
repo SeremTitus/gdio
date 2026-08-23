@@ -1,5 +1,5 @@
-mod config;
 mod commands;
+mod config;
 mod github;
 mod godot;
 mod project;
@@ -337,7 +337,11 @@ fn main() -> anyhow::Result<()> {
             commands::default::run(&mut config)?;
         }
         Some(cmd) => match cmd {
-            Commands::Add { target, path, csharp } => {
+            Commands::Add {
+                target,
+                path,
+                csharp,
+            } => {
                 commands::add::run(&target, path.as_deref(), csharp, &mut config)?;
             }
             Commands::List => {
@@ -361,11 +365,40 @@ fn main() -> anyhow::Result<()> {
             Commands::New { name } => {
                 commands::new::run(&name, &mut config)?;
             }
-            Commands::Build { windows, linux, web, macos, ios, android, debug } => {
+            Commands::Build {
+                windows,
+                linux,
+                web,
+                macos,
+                ios,
+                android,
+                debug,
+            } => {
                 commands::build::run(windows, linux, web, macos, ios, android, debug, &config)?;
             }
-            Commands::Up { setup, windows, linux, web, macos, ios, android, debug, name } => {
-                commands::up::run(setup, windows, linux, web, macos, ios, android, debug, name, &mut config)?;
+            Commands::Up {
+                setup,
+                windows,
+                linux,
+                web,
+                macos,
+                ios,
+                android,
+                debug,
+                name,
+            } => {
+                commands::up::run(
+                    setup,
+                    windows,
+                    linux,
+                    web,
+                    macos,
+                    ios,
+                    android,
+                    debug,
+                    name,
+                    &mut config,
+                )?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;
@@ -373,7 +406,11 @@ fn main() -> anyhow::Result<()> {
             Commands::Cost => {
                 commands::cost::run(&config)?;
             }
-            Commands::Test { init, visual, folder } => {
+            Commands::Test {
+                init,
+                visual,
+                folder,
+            } => {
                 commands::test::run(init, visual, folder.as_deref(), &mut config)?;
             }
             Commands::Addons { action } => match action {
@@ -383,17 +420,33 @@ fn main() -> anyhow::Result<()> {
                 Some(AddonsAction::List { linked }) => {
                     commands::addons::list::run(&config, linked)?;
                 }
-                Some(AddonsAction::Add { identifier, linked, select }) => {
+                Some(AddonsAction::Add {
+                    identifier,
+                    linked,
+                    select,
+                }) => {
                     let identifier = identifier.to_lowercase();
                     commands::addons::add::run(&mut config, &identifier, linked, select)?;
                 }
                 Some(AddonsAction::Remove { identifiers }) => {
-                    let identifiers: Vec<String> = identifiers.iter().map(|s| s.to_lowercase()).collect();
+                    let identifiers: Vec<String> =
+                        identifiers.iter().map(|s| s.to_lowercase()).collect();
                     commands::addons::remove::run(&mut config, &identifiers)?;
                 }
-                Some(AddonsAction::Globals { identifier, remove, select, linked }) => {
+                Some(AddonsAction::Globals {
+                    identifier,
+                    remove,
+                    select,
+                    linked,
+                }) => {
                     let identifier = identifier.map(|s| s.to_lowercase());
-                    commands::addons::globals::run(&mut config, identifier.as_deref(), remove, select, linked)?;
+                    commands::addons::globals::run(
+                        &mut config,
+                        identifier.as_deref(),
+                        remove,
+                        select,
+                        linked,
+                    )?;
                 }
                 Some(AddonsAction::Exclude { identifier, revert }) => {
                     let identifier = identifier.map(|s| s.to_lowercase());
@@ -405,21 +458,52 @@ fn main() -> anyhow::Result<()> {
                     commands::addons::sync::run(&mut config, &cwd, &rt)?;
                 }
                 Some(AddonsAction::Repository { url }) => {
-                    commands::addons::repository::run(
-                        &mut config,
-                        url.as_deref(),
-                    )?;
+                    commands::addons::repository::run(&mut config, url.as_deref())?;
                 }
             },
             Commands::Templates { action } => match action {
                 None | Some(TemplatesAction::List) => {
                     commands::templates::list::run(&config)?;
                 }
-                Some(TemplatesAction::Add { godot_version, windows, linux, web, macos, ios, android }) => {
-                    commands::templates::add::run(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
+                Some(TemplatesAction::Add {
+                    godot_version,
+                    windows,
+                    linux,
+                    web,
+                    macos,
+                    ios,
+                    android,
+                }) => {
+                    commands::templates::add::run(
+                        &godot_version,
+                        windows,
+                        linux,
+                        web,
+                        macos,
+                        ios,
+                        android,
+                        &mut config,
+                    )?;
                 }
-                Some(TemplatesAction::Remove { godot_version, windows, linux, web, macos, ios, android }) => {
-                    commands::templates::remove::run(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
+                Some(TemplatesAction::Remove {
+                    godot_version,
+                    windows,
+                    linux,
+                    web,
+                    macos,
+                    ios,
+                    android,
+                }) => {
+                    commands::templates::remove::run(
+                        &godot_version,
+                        windows,
+                        linux,
+                        web,
+                        macos,
+                        ios,
+                        android,
+                        &mut config,
+                    )?;
                 }
             },
         },

@@ -134,7 +134,11 @@ pub fn find_zip_entries(data: &[u8], file_size: u64) -> Result<Vec<ZipEntry>> {
             let extra_start = current_pos + 46 + name_len;
             let extra_end = extra_start + extra_len;
             if extra_end <= data.len() {
-                parse_zip64_extra(&data[extra_start..extra_end], &mut comp_size, &mut local_offset);
+                parse_zip64_extra(
+                    &data[extra_start..extra_end],
+                    &mut comp_size,
+                    &mut local_offset,
+                );
             }
         }
 

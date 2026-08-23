@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-use crate::config::{Config, GlobalAddonEntry};
 use super::{api, storage};
+use crate::config::{Config, GlobalAddonEntry};
+use anyhow::{Context, Result};
 
 /// Manages global addons that are synced to all projects unless excluded.
 ///
@@ -9,7 +9,13 @@ use super::{api, storage};
 /// * `remove` - If true, remove a global addon (interactive if no identifier)
 /// * `select` - If true, interactively select which version to install
 /// * `linked` - If true, store in global cache and symlink into projects
-pub fn run(config: &mut Config, identifier: Option<&str>, remove: bool, select: bool, linked: bool) -> Result<()> {
+pub fn run(
+    config: &mut Config,
+    identifier: Option<&str>,
+    remove: bool,
+    select: bool,
+    linked: bool,
+) -> Result<()> {
     if remove {
         return match identifier {
             Some(ident) => run_remove_one(config, ident),
@@ -75,9 +81,7 @@ fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) ->
     let mut repository = String::new();
 
     // 1. Try local files (if in project and addon exists locally)
-    if in_project
-        && let Some(name) = storage::find_local_addon_folder(&cwd, asset)
-    {
+    if in_project && let Some(name) = storage::find_local_addon_folder(&cwd, asset) {
         let addons_dir = cwd.join("addons");
         let plugin_cfg = addons_dir.join(&name).join("plugin.cfg");
         version = if plugin_cfg.exists() {
@@ -86,7 +90,9 @@ fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) ->
             String::new()
         };
         let gdio = storage::read_gdio(&cwd);
-        repository = gdio.addons.get(identifier)
+        repository = gdio
+            .addons
+            .get(identifier)
             .map(|e| e.repository.clone())
             .unwrap_or_default();
         folder_name = Some(name);
@@ -211,7 +217,7 @@ fn run_remove(config: &mut Config) -> Result<()> {
         .addons
         .globals
         .iter()
-            .map(|(ident, info)| format!("{} v{}", ident, info.version.as_deref().unwrap_or("latest")))
+        .map(|(ident, info)| format!("{} v{}", ident, info.version.as_deref().unwrap_or("latest")))
         .collect();
 
     let idx = dialoguer::Select::new()
@@ -229,7 +235,11 @@ fn run_remove(config: &mut Config) -> Result<()> {
 }
 
 /// Search the global store for a folder matching publisher/asset.
-fn find_folder_in_global_store(global_dir: &std::path::Path, publisher: &str, asset: &str) -> Option<String> {
+fn find_folder_in_global_store(
+    global_dir: &std::path::Path,
+    publisher: &str,
+    asset: &str,
+) -> Option<String> {
     let prefix = format!("{}_{}_", publisher, asset);
     for entry in std::fs::read_dir(global_dir).ok()? {
         let entry = entry.ok()?;
@@ -257,7 +267,8 @@ fn parse_plugin_version(path: &std::path::Path) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("version=") {
-            return trimmed.split_once('=')
+            return trimmed
+                .split_once('=')
                 .map(|(_, v)| v.trim_matches('"').to_string());
         }
     }

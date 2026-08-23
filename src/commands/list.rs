@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::Config;
+use anyhow::Result;
 
 pub fn run(config: &Config) -> Result<()> {
     if config.editors.is_empty() {

@@ -1,11 +1,16 @@
-use anyhow::Result;
-use console::Style;
 use crate::config::{self, Config, EditorInfo, EditorSource};
 use crate::github;
+use anyhow::Result;
+use console::Style;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub fn run(version: &str, path: Option<&str>, csharp: bool, config: &mut Config) -> Result<Option<EditorInfo>> {
+pub fn run(
+    version: &str,
+    path: Option<&str>,
+    csharp: bool,
+    config: &mut Config,
+) -> Result<Option<EditorInfo>> {
     if let Some(local_path) = path {
         return register_local(local_path, config);
     }
@@ -96,7 +101,11 @@ pub async fn download_version(
         println!("Already exists: {}", exe_path.display());
         if let Some(existing) = config.find_editor_for_version(&version_key) {
             if existing.is_mono == csharp {
-                println!("Already registered: {} ({})", existing.name, existing.path.display());
+                println!(
+                    "Already registered: {} ({})",
+                    existing.name,
+                    existing.path.display()
+                );
                 return Ok(None);
             }
         }
@@ -133,12 +142,19 @@ pub async fn download_version_auto(
                 // API failed — try to find an already-registered editor for this version prefix
                 if let Some(existing) = config.find_editor_for_version(version) {
                     if existing.is_mono == csharp {
-                        println!("Already registered: {} ({})", existing.name, existing.path.display());
+                        println!(
+                            "Already registered: {} ({})",
+                            existing.name,
+                            existing.path.display()
+                        );
                         return Ok(None);
                     }
                 }
                 // API unavailable and no registered editor — default to "stable"
-                eprintln!("Warning: GitHub API unavailable, defaulting to 'stable' stage for '{}'", version);
+                eprintln!(
+                    "Warning: GitHub API unavailable, defaulting to 'stable' stage for '{}'",
+                    version
+                );
                 "stable".to_string()
             }
         };
@@ -146,7 +162,11 @@ pub async fn download_version_auto(
         // Try to find and register if not in config
         if let Some(existing) = config.find_editor_for_version(&version_key) {
             if existing.is_mono == csharp {
-                println!("Already registered: {} ({})", existing.name, existing.path.display());
+                println!(
+                    "Already registered: {} ({})",
+                    existing.name,
+                    existing.path.display()
+                );
                 return Ok(None);
             }
         }
@@ -181,13 +201,7 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
                 ))
             }
         })
-        .map_err(|e| {
-            anyhow::anyhow!(
-                "Failed to run `{} --version`: {}",
-                path.display(),
-                e
-            )
-        })?;
+        .map_err(|e| anyhow::anyhow!("Failed to run `{} --version`: {}", path.display(), e))?;
 
     let default_name = path
         .file_stem()
@@ -202,12 +216,18 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
             .interact_text()?;
 
         if let Some(existing) = config.editors.values().find(|e| e.name == input) {
-            let source = if existing.source == EditorSource::Local { "local" } else { "downloaded" };
+            let source = if existing.source == EditorSource::Local {
+                "local"
+            } else {
+                "downloaded"
+            };
             println!(
                 "{}",
                 Style::new().blue().apply_to(format!(
                     "'{}' taken by {} ({})",
-                    input, source, existing.path.display()
+                    input,
+                    source,
+                    existing.path.display()
                 ))
             );
             continue;

@@ -1,8 +1,8 @@
-use anyhow::Result;
+use super::{api, storage};
 use crate::config::Config;
+use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
-use super::{api, storage};
 
 /// Synchronizes linked and global addons into the current project.
 ///
@@ -38,9 +38,7 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
         let folder_name = linked_info
             .map(|g| g.folder_name.as_str())
             .unwrap_or_else(|| asset);
-        let version = linked_info
-            .map(|g| g.version.as_str())
-            .unwrap_or("unknown");
+        let version = linked_info.map(|g| g.version.as_str()).unwrap_or("unknown");
 
         let global_addon_dir = global_dir.join(format!("{}_{}_{}", publisher, asset, version));
         let global_addon_content_dir = global_addon_dir.join(folder_name);
@@ -76,7 +74,8 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
                     if repo.url != repo_url && !repo_url.is_empty() {
                         continue;
                     }
-                    if let Ok(releases) = rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
+                    if let Ok(releases) =
+                        rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
                         && let Some(r) = releases.iter().find(|r| r.version == version_str)
                     {
                         download_url = Some(r.download_url.clone());
@@ -89,7 +88,8 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
                     None => {
                         // Fallback: try any release
                         for repo in &config.addons.repositories {
-                            if let Ok(releases) = rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
+                            if let Ok(releases) = rt
+                                .block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
                                 && let Some(r) = releases.first()
                             {
                                 download_url = Some(r.download_url.clone());
@@ -108,7 +108,12 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
 
                 let cache_dir = Config::get_addons_cache_dir();
                 let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version_str);
-                let zip_path = match rt.block_on(api::download_zip(&client, &download_url, &cache_dir, &zip_name)) {
+                let zip_path = match rt.block_on(api::download_zip(
+                    &client,
+                    &download_url,
+                    &cache_dir,
+                    &zip_name,
+                )) {
                     Ok(p) => p,
                     Err(e) => {
                         println!("    download failed: {}", e);
@@ -123,7 +128,11 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
                         std::fs::create_dir_all(&addons_dir)?;
                         storage::create_symlink(&global_addon_content_dir, &link_path)?;
                         storage::enable_plugin(project_dir, &extracted_folder)?;
-                        println!("  synced (re-downloaded): {} -> {}", folder_name, global_addon_content_dir.display());
+                        println!(
+                            "  synced (re-downloaded): {} -> {}",
+                            folder_name,
+                            global_addon_content_dir.display()
+                        );
                         anything_done = true;
                     }
                     Err(e) => {
@@ -136,7 +145,11 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
                 std::fs::create_dir_all(&addons_dir)?;
                 storage::create_symlink(&global_addon_content_dir, &link_path)?;
                 storage::enable_plugin(project_dir, folder_name)?;
-                println!("  synced: {} -> {}", folder_name, global_addon_content_dir.display());
+                println!(
+                    "  synced: {} -> {}",
+                    folder_name,
+                    global_addon_content_dir.display()
+                );
                 anything_done = true;
             }
         }
@@ -145,7 +158,9 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
     // Step 2: Sync global addons
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
     let project_key = project_dir.to_string_lossy().to_string();
-    let godot_version = config.projects.get(&project_key)
+    let godot_version = config
+        .projects
+        .get(&project_key)
         .and_then(|p| p.bound_editor.clone());
 
     for (identifier, global_info) in &config.addons.globals {
@@ -185,7 +200,8 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
             let pinned_version = pinned_version.clone();
             let mut url = None;
             for repo in &config.addons.repositories {
-                if let Ok(releases) = rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
+                if let Ok(releases) =
+                    rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset))
                     && let Some(r) = releases.iter().find(|r| r.version == pinned_version)
                 {
                     url = Some(r.download_url.clone());
@@ -195,7 +211,10 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
             match url {
                 Some(u) => (u, pinned_version),
                 None => {
-                    println!("  {}: pinned version v{} not found, skipping", identifier, pinned_version);
+                    println!(
+                        "  {}: pinned version v{} not found, skipping",
+                        identifier, pinned_version
+                    );
                     continue;
                 }
             }
@@ -250,7 +269,12 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
             println!("  {}: downloading v{} from store...", identifier, version);
             let cache_dir = Config::get_addons_cache_dir();
             let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version);
-            let zip_path = match rt.block_on(api::download_zip(&client, &download_url, &cache_dir, &zip_name)) {
+            let zip_path = match rt.block_on(api::download_zip(
+                &client,
+                &download_url,
+                &cache_dir,
+                &zip_name,
+            )) {
                 Ok(p) => p,
                 Err(e) => {
                     println!("    download failed: {}", e);
@@ -273,16 +297,10 @@ pub fn run(config: &mut Config, project_dir: &Path, rt: &tokio::runtime::Runtime
             std::fs::create_dir_all(&addons_dir)?;
             if global_info.linked {
                 storage::create_symlink(&global_addon_content_dir, &addon_path)?;
-                println!(
-                    "  installed (global/symlink): {} v{}",
-                    folder_name, version
-                );
+                println!("  installed (global/symlink): {} v{}", folder_name, version);
             } else {
                 storage::copy_dir_all(&global_addon_content_dir, &addon_path)?;
-                println!(
-                    "  installed (global/copied): {} v{}",
-                    folder_name, version
-                );
+                println!("  installed (global/copied): {} v{}", folder_name, version);
             }
             storage::enable_plugin(project_dir, &folder_name)?;
 
@@ -375,7 +393,10 @@ fn resolve_addon_dependencies(
             }
             let (publisher, asset) = (parts[0], parts[1]);
 
-            let folder_name = config.addons.linked.get(identifier)
+            let folder_name = config
+                .addons
+                .linked
+                .get(identifier)
                 .map(|g| g.folder_name.clone())
                 .unwrap_or_else(|| asset.to_string());
 
@@ -384,16 +405,15 @@ fn resolve_addon_dependencies(
             // Skip only if both the project's .gdio tracks it AND the directory exists
             let project_gdio = storage::read_gdio(project_dir);
             let in_project_gdio = project_gdio.addons.contains_key(identifier);
-            let dir_exists = addon_path_in_project.exists() || addon_path_in_project.symlink_metadata().is_ok();
+            let dir_exists =
+                addon_path_in_project.exists() || addon_path_in_project.symlink_metadata().is_ok();
             if in_project_gdio && dir_exists {
                 continue;
             }
 
             // Try to find it in the global store (from a previous install or linked addon)
             let linked_info = config.addons.linked.get(identifier);
-            let version = linked_info
-                .map(|g| g.version.as_str())
-                .unwrap_or("unknown");
+            let version = linked_info.map(|g| g.version.as_str()).unwrap_or("unknown");
 
             let global_addon_dir = global_dir.join(format!("{}_{}_{}", publisher, asset, version));
             let global_addon_content_dir = global_addon_dir.join(&folder_name);
@@ -403,7 +423,11 @@ fn resolve_addon_dependencies(
                 std::fs::create_dir_all(&addons_dir)?;
                 storage::create_symlink(&global_addon_content_dir, &addon_path_in_project)?;
                 storage::enable_plugin(project_dir, &folder_name)?;
-                println!("  dep installed (symlink): {} -> {}", folder_name, global_addon_content_dir.display());
+                println!(
+                    "  dep installed (symlink): {} -> {}",
+                    folder_name,
+                    global_addon_content_dir.display()
+                );
                 anything_done = true;
 
                 // Recurse into the newly installed addon
@@ -419,7 +443,11 @@ fn resolve_addon_dependencies(
                     match rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset)) {
                         Ok(releases) => {
                             if let Some(r) = releases.first() {
-                                found = Some((r.download_url.clone(), r.version.clone(), repo.url.clone()));
+                                found = Some((
+                                    r.download_url.clone(),
+                                    r.version.clone(),
+                                    repo.url.clone(),
+                                ));
                                 break;
                             }
                         }
@@ -440,7 +468,12 @@ fn resolve_addon_dependencies(
                 // Download and extract
                 let cache_dir = Config::get_addons_cache_dir();
                 let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), dep_version);
-                let zip_path = match rt.block_on(api::download_zip(&client, &download_url, &cache_dir, &zip_name)) {
+                let zip_path = match rt.block_on(api::download_zip(
+                    &client,
+                    &download_url,
+                    &cache_dir,
+                    &zip_name,
+                )) {
                     Ok(p) => p,
                     Err(e) => {
                         println!("    dep download failed: {}", e);
@@ -448,14 +481,15 @@ fn resolve_addon_dependencies(
                     }
                 };
 
-                let extracted_folder = match storage::extract_addon(&zip_path, &global_addon_dir, true) {
-                    Ok(name) => name,
-                    Err(e) => {
-                        println!("    dep extraction failed: {}", e);
-                        let _ = std::fs::remove_file(&zip_path);
-                        continue;
-                    }
-                };
+                let extracted_folder =
+                    match storage::extract_addon(&zip_path, &global_addon_dir, true) {
+                        Ok(name) => name,
+                        Err(e) => {
+                            println!("    dep extraction failed: {}", e);
+                            let _ = std::fs::remove_file(&zip_path);
+                            continue;
+                        }
+                    };
                 let _ = std::fs::remove_file(&zip_path);
 
                 let global_addon_content_dir = global_addon_dir.join(&extracted_folder);
@@ -466,7 +500,13 @@ fn resolve_addon_dependencies(
                 storage::enable_plugin(project_dir, &extracted_folder)?;
 
                 // Update .gdio in project
-                storage::add_linked(project_dir, identifier, &dep_version, &repo_url, &extracted_folder)?;
+                storage::add_linked(
+                    project_dir,
+                    identifier,
+                    &dep_version,
+                    &repo_url,
+                    &extracted_folder,
+                )?;
 
                 println!(
                     "  dep installed: {} v{} -> {}",
@@ -476,11 +516,15 @@ fn resolve_addon_dependencies(
                 // Track in linked config
                 use crate::config::LinkedAddonInfo;
                 let project_key = project_dir.to_string_lossy().to_string();
-                let entry = config.addons.linked.entry(identifier.to_string()).or_insert_with(|| LinkedAddonInfo {
-                    version: dep_version.clone(),
-                    folder_name: extracted_folder.clone(),
-                    projects: Vec::new(),
-                });
+                let entry = config
+                    .addons
+                    .linked
+                    .entry(identifier.to_string())
+                    .or_insert_with(|| LinkedAddonInfo {
+                        version: dep_version.clone(),
+                        folder_name: extracted_folder.clone(),
+                        projects: Vec::new(),
+                    });
                 if !entry.projects.contains(&project_key) {
                     entry.projects.push(project_key);
                 }

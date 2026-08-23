@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::config::{Config, Repository};
+use anyhow::Result;
 
 /// - No arguments: list all registered repositories
 /// - With URL: toggle — if the URL is already registered, remove it; otherwise add it
@@ -69,10 +69,7 @@ fn derive_name(url: &str) -> String {
         .trim_start_matches("https://")
         .trim_start_matches("http://");
 
-    let host_part = without_proto
-        .split('/')
-        .next()
-        .unwrap_or("unknown");
+    let host_part = without_proto.split('/').next().unwrap_or("unknown");
 
     if host_part == "store.godotengine.org" {
         return "godot-official-store".to_string();

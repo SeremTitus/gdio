@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
 use crate::config::{self, Config};
 use crate::project;
+use anyhow::{Context, Result};
 use console::Style;
 
 #[allow(clippy::too_many_arguments)]
@@ -69,15 +69,24 @@ pub fn run(
                 "Could not detect platforms from export presets. Use platform flags explicitly."
             );
         }
-        println!("Detected platforms from presets: {}\n", platforms.join(", "));
+        println!(
+            "Detected platforms from presets: {}\n",
+            platforms.join(", ")
+        );
     }
 
     let project_path = cwd.to_string_lossy().to_string();
-    let project_name = project::parse_project_name(&project_file)
-        .unwrap_or_else(|| "game".to_string());
+    let project_name =
+        project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
     let project_snake: String = project_name
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect();
 
     let editor_version = config
@@ -87,7 +96,10 @@ pub fn run(
         .context("No editor bound to this project. Use `gdio bind` to bind one.")?;
     let editor = config
         .find_editor_for_version(&editor_version)
-        .context(format!("Bound editor '{}' not found. Use `gdio bind` to rebind.", editor_version))?
+        .context(format!(
+            "Bound editor '{}' not found. Use `gdio bind` to rebind.",
+            editor_version
+        ))?
         .clone();
     let godot_version = editor.version.clone();
 
@@ -113,7 +125,13 @@ pub fn run(
             Some(p) => p,
             None => {
                 let yellow = Style::new().yellow();
-                eprintln!("{}", yellow.apply_to(format!("Skipping preset '{}' - unknown platform '{}'", preset.name, preset.platform)));
+                eprintln!(
+                    "{}",
+                    yellow.apply_to(format!(
+                        "Skipping preset '{}' - unknown platform '{}'",
+                        preset.name, preset.platform
+                    ))
+                );
                 continue;
             }
         };
@@ -129,15 +147,24 @@ pub fn run(
         let output_file = if let Some(ref export_path) = preset.export_path {
             cwd.join(export_path)
         } else {
-            let preset_snake: String = preset.name
+            let preset_snake: String = preset
+                .name
                 .chars()
-                .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+                .map(|c| {
+                    if c.is_ascii_alphanumeric() {
+                        c.to_ascii_lowercase()
+                    } else {
+                        '_'
+                    }
+                })
                 .collect();
             if preset_platform == "web" {
                 output_dir.join(&preset_snake).join("index.html")
             } else if preset_platform == "linux" {
                 let arch = preset.binary_format.as_deref().unwrap_or("x86_64");
-                output_dir.join(&preset_snake).join(format!("{}.{}", project_snake, arch))
+                output_dir
+                    .join(&preset_snake)
+                    .join(format!("{}.{}", project_snake, arch))
             } else {
                 let ext = match preset_platform {
                     "windows" => ".exe",
@@ -146,7 +173,9 @@ pub fn run(
                     "android" => ".apk",
                     _ => "",
                 };
-                output_dir.join(&preset_snake).join(format!("{}{}", project_snake, ext))
+                output_dir
+                    .join(&preset_snake)
+                    .join(format!("{}{}", project_snake, ext))
             }
         };
 
@@ -183,8 +212,7 @@ pub fn run(
 
 fn ensure_templates(version: &str, platform: &str) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
-    let godot_dir = Config::get_godot_templates_dir()
-        .join(format!("{}.{}", base_version, flavor));
+    let godot_dir = Config::get_godot_templates_dir().join(format!("{}.{}", base_version, flavor));
 
     if godot_dir.exists() {
         let platforms = crate::commands::templates::list::detect_platforms(godot_dir.as_path())?;

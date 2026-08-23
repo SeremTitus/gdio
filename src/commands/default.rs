@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::godot;
 use crate::project;
+use anyhow::{Context, Result};
 
 pub fn run(config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
@@ -14,8 +14,8 @@ pub fn run(config: &mut Config) -> Result<()> {
     }
 
     let project_path = cwd.to_string_lossy().to_string();
-    let project_name = project::parse_project_name(&project_file)
-        .unwrap_or_else(|| "Unknown Project".to_string());
+    let project_name =
+        project::parse_project_name(&project_file).unwrap_or_else(|| "Unknown Project".to_string());
 
     println!("Found project: {} ({})", project_name, project_path);
 
@@ -112,8 +112,7 @@ pub fn run(config: &mut Config) -> Result<()> {
                 let version = version.clone();
                 let rt = tokio::runtime::Runtime::new()?;
                 rt.block_on(async {
-                    crate::commands::add::download_version_auto(&version, false, config)
-                        .await?;
+                    crate::commands::add::download_version_auto(&version, false, config).await?;
 
                     if let Some(editor) = config.find_editor_for_version(&version) {
                         let project_file = std::env::current_dir()?.join("project.godot");

@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-use crate::config::Config;
 use super::storage;
+use crate::config::Config;
+use anyhow::{Context, Result};
 
 /// Manages project exclusions for global addons.
 ///
@@ -82,7 +82,12 @@ pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Resul
 }
 
 /// Revert an exclusion: remove from exclusion list and re-add addon to the project.
-fn revert_exclusion(config: &mut Config, ident: &str, project_path: &str, project_dir: &std::path::Path) -> Result<()> {
+fn revert_exclusion(
+    config: &mut Config,
+    ident: &str,
+    project_path: &str,
+    project_dir: &std::path::Path,
+) -> Result<()> {
     if let Some(exclusions) = config.addons.globals_exclusions.get_mut(ident) {
         let before = exclusions.len();
         exclusions.retain(|p| p != project_path);
@@ -111,10 +116,9 @@ fn revert_exclusion(config: &mut Config, ident: &str, project_path: &str, projec
             let parts: Vec<&str> = ident.splitn(2, '/').collect();
             if parts.len() == 2 {
                 let linked_info = config.addons.linked.get(ident);
-                let version = linked_info
-                    .map(|g| g.version.as_str())
-                    .unwrap_or("unknown");
-                let global_addon_dir = global_dir.join(format!("{}_{}_{}", parts[0], parts[1], version));
+                let version = linked_info.map(|g| g.version.as_str()).unwrap_or("unknown");
+                let global_addon_dir =
+                    global_dir.join(format!("{}_{}_{}", parts[0], parts[1], version));
                 let global_addon_content_dir = global_addon_dir.join(folder_name);
 
                 if global_addon_content_dir.exists() {
@@ -153,7 +157,11 @@ fn run_exclude_interactive(config: &mut Config, project_path: &str) -> Result<()
                 .map(|e| e.contains(&project_path.to_string()))
                 .unwrap_or(false);
             if excluded {
-                format!("{} v{} (already excluded)", ident, info.version.as_deref().unwrap_or("latest"))
+                format!(
+                    "{} v{} (already excluded)",
+                    ident,
+                    info.version.as_deref().unwrap_or("latest")
+                )
             } else {
                 format!("{} v{}", ident, info.version.as_deref().unwrap_or("latest"))
             }

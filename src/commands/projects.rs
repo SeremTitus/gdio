@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
-use console::Style;
 use crate::config::{self, Config};
 use crate::godot;
+use anyhow::{Context, Result};
+use console::Style;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run(config: &mut Config) -> Result<()> {
@@ -86,10 +86,7 @@ pub fn run(config: &mut Config) -> Result<()> {
 
     let project_file = project.path.join("project.godot");
     if !project_file.exists() {
-        anyhow::bail!(
-            "Project file not found: {}",
-            project_file.display()
-        );
+        anyhow::bail!("Project file not found: {}", project_file.display());
     }
 
     let mut editor = project
@@ -108,7 +105,8 @@ pub fn run(config: &mut Config) -> Result<()> {
     let editor = match editor {
         Some(e) => e,
         None => {
-            let mut options: Vec<String> = config.editors.values().map(|e| e.name.clone()).collect();
+            let mut options: Vec<String> =
+                config.editors.values().map(|e| e.name.clone()).collect();
             options.push("[add editor]".to_string());
 
             let idx = dialoguer::FuzzySelect::new()

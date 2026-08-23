@@ -36,7 +36,11 @@ pub fn progress_style_overall() -> ProgressStyle {
         .progress_chars("=>-")
 }
 
-pub async fn fetch_mirror_url(client: &reqwest::Client, base_version: &str, flavor: &str) -> Result<String> {
+pub async fn fetch_mirror_url(
+    client: &reqwest::Client,
+    base_version: &str,
+    flavor: &str,
+) -> Result<String> {
     let mirror_list_url = format!(
         "https://godotengine.org/mirrorlist/{}.{}.json",
         base_version, flavor
@@ -53,7 +57,8 @@ pub async fn fetch_mirror_url(client: &reqwest::Client, base_version: &str, flav
             anyhow::bail!(
                 "Version {}-{} does not exist.\n\
                  For dev/beta/rc, use the full version number (e.g. 4.3-beta1, 4.3-dev5, 4.3-rc1).",
-                base_version, flavor
+                base_version,
+                flavor
             );
         }
         anyhow::bail!("Failed to fetch mirrors: HTTP {}", status);
@@ -97,7 +102,8 @@ pub async fn download_files_concurrent(
             let mp = mp.clone();
             let client = client.clone();
             async move {
-                let result = download_file_from_mirror(&client, &url, &filename, &dest, Some(&mp)).await;
+                let result =
+                    download_file_from_mirror(&client, &url, &filename, &dest, Some(&mp)).await;
                 (filename, result)
             }
         })
@@ -139,7 +145,8 @@ pub async fn download_range(
     }
 
     if let Some(pb) = pb {
-        let total = end.checked_sub(start)
+        let total = end
+            .checked_sub(start)
             .map(|d| d.saturating_add(1))
             .unwrap_or(u64::MAX);
         let mut stream = resp.bytes_stream();
@@ -225,13 +232,20 @@ pub async fn download_file_from_mirror(
     // Step 5: Download the local file header + compressed data
     // Add buffer for ZIP64 extra data in local header (can differ from CD entry)
     let download_start = entry.offset;
-    let download_end = (download_start + entry.local_header_size as u64 + entry.compressed_size as u64 + ZIP64_EXTRA_BUFFER).min(file_size.saturating_sub(1));
+    let download_end = (download_start
+        + entry.local_header_size as u64
+        + entry.compressed_size as u64
+        + ZIP64_EXTRA_BUFFER)
+        .min(file_size.saturating_sub(1));
 
     // Validate range
     if download_start > download_end {
         anyhow::bail!(
             "Invalid download range: start ({}) > end ({}), file_size={}, entry.offset={}",
-            download_start, download_end, file_size, entry.offset
+            download_start,
+            download_end,
+            file_size,
+            entry.offset
         );
     }
 
@@ -260,8 +274,8 @@ pub async fn download_file_from_mirror(
 
     let result = async {
         let fragment = download_range(client, url, download_start, download_end, Some(&pb))
-        .await
-        .context(format!("Failed to download file '{}'", filename))?;
+            .await
+            .context(format!("Failed to download file '{}'", filename))?;
 
         // Parse local file header to get actual offsets
         if fragment.len() < 30 {
@@ -301,7 +315,8 @@ pub async fn download_file_from_mirror(
         std::fs::write(dest, &decompressed)?;
 
         Ok::<_, anyhow::Error>((filename.to_string(), size))
-    }.await;
+    }
+    .await;
 
     // Guard will clean up progress bar on drop (including panic)
     result
@@ -329,9 +344,14 @@ pub async fn download_full_tpz(client: &reqwest::Client, url: &str, dest_dir: &P
     pb.set_style(progress_style_archive());
     pb.set_message("Downloading");
 
-    let temp_file = Builder::new().suffix(".tpz").tempfile_in(dest_dir).context("Failed to create temp file")?;
+    let temp_file = Builder::new()
+        .suffix(".tpz")
+        .tempfile_in(dest_dir)
+        .context("Failed to create temp file")?;
     let temp_path = temp_file.path().to_path_buf();
-    let mut tokio_file = tokio::fs::File::create(&temp_path).await.context("Failed to open temp file for writing")?;
+    let mut tokio_file = tokio::fs::File::create(&temp_path)
+        .await
+        .context("Failed to open temp file for writing")?;
 
     let mut stream = resp.bytes_stream();
     let mut downloaded: u64 = 0;
@@ -400,7 +420,9 @@ pub async fn download_template_files(
     }
 
     let mp = MultiProgress::new();
-    let overall_pb = mp.add(ProgressBar::new(files.iter().filter(|f| !skipped.contains(*f)).count() as u64));
+    let overall_pb = mp.add(ProgressBar::new(
+        files.iter().filter(|f| !skipped.contains(*f)).count() as u64,
+    ));
     overall_pb.set_style(progress_style_overall());
     overall_pb.set_message(format!("{platform} templates"));
 
@@ -412,7 +434,8 @@ pub async fn download_template_files(
         &mp,
         &overall_pb,
         &skipped,
-    ).await;
+    )
+    .await;
 
     overall_pb.finish_and_clear();
     mp.clear().ok();
@@ -433,7 +456,11 @@ pub async fn download_template_files(
         anyhow::bail!(
             "{} template download(s) failed: {}",
             failed.len(),
-            failed.iter().map(|(f, _)| f.as_str()).collect::<Vec<_>>().join(", ")
+            failed
+                .iter()
+                .map(|(f, _)| f.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
         );
     }
 

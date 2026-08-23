@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use indicatif::{ProgressBar, ProgressStyle};
 use futures_util::stream::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Clone)]
 pub struct Release {
@@ -39,7 +39,10 @@ fn parse_version_components(version: &str) -> ([i32; 3], i32, i32) {
 fn find_prerelease(version: &str) -> (&str, &str) {
     let bytes = version.as_bytes();
     for i in 1..bytes.len() {
-        if (bytes[i] == b'-' || bytes[i] == b'.') && i + 1 < bytes.len() && bytes[i + 1].is_ascii_alphabetic() {
+        if (bytes[i] == b'-' || bytes[i] == b'.')
+            && i + 1 < bytes.len()
+            && bytes[i + 1].is_ascii_alphabetic()
+        {
             return (&version[..i], &version[i + 1..]);
         }
     }
@@ -96,18 +99,23 @@ pub fn is_version_compatible(engine_version: &str, constraint: &str, is_min: boo
 /// List all compatible releases sorted by version (highest first).
 ///
 /// Filters by engine version compatibility and sorts for display.
-pub fn list_compatible_releases<'a>(releases: &'a [Release], godot_version: &str) -> Vec<&'a Release> {
+pub fn list_compatible_releases<'a>(
+    releases: &'a [Release],
+    godot_version: &str,
+) -> Vec<&'a Release> {
     let mut compatible: Vec<&Release> = releases
         .iter()
         .filter(|r| {
             if let Some(ref min) = r.min_godot_version
-                && !is_version_compatible(godot_version, min, true) {
-                    return false;
-                }
+                && !is_version_compatible(godot_version, min, true)
+            {
+                return false;
+            }
             if let Some(ref max) = r.max_godot_version
-                && !is_version_compatible(godot_version, max, false) {
-                    return false;
-                }
+                && !is_version_compatible(godot_version, max, false)
+            {
+                return false;
+            }
             true
         })
         .collect();
@@ -151,7 +159,11 @@ pub async fn fetch_releases(
     // Check for HTTP errors (e.g. 404 if asset doesn't exist)
     if !resp.status().is_success() {
         if resp.status().as_u16() == 404 {
-            anyhow::bail!("Addon '{}/{}' does not exist on the asset store.", publisher, asset);
+            anyhow::bail!(
+                "Addon '{}/{}' does not exist on the asset store.",
+                publisher,
+                asset
+            );
         }
         anyhow::bail!(
             "Failed to fetch releases for {}/{}: HTTP {}",
@@ -170,7 +182,11 @@ pub async fn fetch_releases(
         .filter_map(|d| {
             Some(Release {
                 download_url: d["download_url"].as_str()?.to_string(),
-                version: d["version"].as_str()?.strip_prefix('v').unwrap_or(d["version"].as_str()?).to_string(),
+                version: d["version"]
+                    .as_str()?
+                    .strip_prefix('v')
+                    .unwrap_or(d["version"].as_str()?)
+                    .to_string(),
                 stable: d["stable"].as_bool().unwrap_or(false),
                 min_godot_version: d["min_godot_version"].as_str().map(|s| s.to_string()),
                 max_godot_version: d["max_godot_version"].as_str().map(|s| s.to_string()),
@@ -211,7 +227,10 @@ pub async fn download_zip(
 
                 if attempt < MAX_RETRIES && is_transient {
                     let delay = 2u64.pow(attempt); // 2s, 4s
-                    eprintln!("  Download failed (attempt {}/{}). Retrying in {}s...", attempt, MAX_RETRIES, delay);
+                    eprintln!(
+                        "  Download failed (attempt {}/{}). Retrying in {}s...",
+                        attempt, MAX_RETRIES, delay
+                    );
                     let _ = std::fs::remove_file(&dest_path);
                     tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
                 } else {

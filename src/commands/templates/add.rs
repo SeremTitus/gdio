@@ -1,6 +1,6 @@
-use anyhow::Result;
 use crate::config::{self, Config};
 use crate::github;
+use anyhow::Result;
 use console::Style;
 use indicatif::{MultiProgress, ProgressBar};
 use std::path::Path;
@@ -56,7 +56,10 @@ async fn download_modern_templates(
     overall_pb.set_style(api::progress_style_overall());
     overall_pb.set_message("Downloading templates");
 
-    let files: Vec<&str> = to_download_tasks.iter().map(|t| t.filename.as_ref()).collect();
+    let files: Vec<&str> = to_download_tasks
+        .iter()
+        .map(|t| t.filename.as_ref())
+        .collect();
     let results = api::download_files_concurrent(
         client,
         &mirror_url,
@@ -65,7 +68,8 @@ async fn download_modern_templates(
         &mp,
         &overall_pb,
         &std::collections::HashSet::new(),
-    ).await;
+    )
+    .await;
 
     let mut task_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for task in &to_download_tasks {
@@ -97,7 +101,11 @@ async fn download_modern_templates(
         anyhow::bail!(
             "{} template download(s) failed: {}",
             failed.len(),
-            failed.iter().map(|(f, _)| f.as_str()).collect::<Vec<_>>().join(", ")
+            failed
+                .iter()
+                .map(|(f, _)| f.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
         );
     }
 
@@ -184,15 +192,17 @@ pub fn run(
         return Ok(());
     }
 
-    println!("Downloading templates for {} ({})", version, to_download.join(", "));
+    println!(
+        "Downloading templates for {} ({})",
+        version,
+        to_download.join(", ")
+    );
 
     std::fs::create_dir_all(&godot_dir)?;
 
     let rt = tokio::runtime::Runtime::new()?;
 
-    let client = reqwest::Client::builder()
-        .user_agent("gdio")
-        .build()?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     if is_legacy {
         // Legacy (pre-4.x): download full .tpz archive
