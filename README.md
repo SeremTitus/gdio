@@ -178,6 +178,22 @@ gdio uninstall --keep                         # keep config and editor binaries
 
 Show disk space used by gdio components.
 
+### `gdio test`
+
+Run [GUT](https://github.com/bitwes/Gut) tests for the current project.
+
+```bash
+gdio test --init                              # install GUT addon
+gdio test                                     # run all tests (headless)
+gdio test test                                # run tests in res://test/
+gdio test test/unit                           # run tests in res://test/unit/
+gdio test --visual                            # open GUT GUI window
+gdio test test --visual                       # visual mode with specific folder
+```
+
+`--init`/`-i` installs GUT. Without arguments, GUT reads `.gutconfig.json` if present, otherwise scans the project for `test_*.gd` files. 
+`--visual`/`-v` opens the GUT test runner window instead of running headless.
+
 ### `gdio addons`
 
 Manage addons from the [Godot Asset Store](https://store.godotengine.org/) and third-party repositories.
@@ -260,12 +276,12 @@ Addons marked as global are synced to all projects unless excluded. Use `gdio ad
 
 Editor and project data stored in `%APPDATA%/gdio/` (Windows) or `~/.config/gdio/` (Linux/macOS):
 
-```
+```bash
 gdio/
-├── config.json       # editor registry + project registry + addon repos
-├── editors/          # downloaded editor binaries
-├── downloads/        # temporary download directory
-└── addons/           # global addon store (for --global addons)
+├── config.json                               # editor registry + project registry + addon repos
+├── editors/                                  # downloaded editor binaries
+├── downloads/                                # temporary download directory
+└── addons/                                   # global addon store (for --global addons)
 ```
 
 ## Alternatives
