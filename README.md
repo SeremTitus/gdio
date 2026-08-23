@@ -232,6 +232,8 @@ Stores the addon in gdio's global store (`<gdio config dir>/addons/`) and create
 
 Switching modes: Re-running `gdio addons add` with or without `--linked` switches the installation mode. The previous install (symlink or local copy) is automatically removed.
 
+NOTE: Edit/Change in one it will appear in every project linking the addon.
+
 RISK: Not tracked by git, developer may delete addon from Asset Store.
 
 #### Global addons (`gdio addons globals`) [ADVANCED]
