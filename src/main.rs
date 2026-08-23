@@ -2,9 +2,11 @@ mod commands;
 mod config;
 mod github;
 mod godot;
+mod platform;
 mod project;
 
 use clap::{Parser, Subcommand};
+use platform::PlatformFlags;
 
 #[derive(Parser)]
 #[command(
@@ -74,29 +76,8 @@ enum Commands {
 
     /// Export the current project
     Build {
-        /// Export for Windows
-        #[arg(long)]
-        windows: bool,
-
-        /// Export for Linux
-        #[arg(long)]
-        linux: bool,
-
-        /// Export for Web
-        #[arg(long)]
-        web: bool,
-
-        /// Export for macOS
-        #[arg(long)]
-        macos: bool,
-
-        /// Export for iOS
-        #[arg(long)]
-        ios: bool,
-
-        /// Export for Android
-        #[arg(long)]
-        android: bool,
+        #[command(flatten)]
+        platform: PlatformFlags,
 
         /// Export in debug mode
         #[arg(short, long)]
@@ -109,29 +90,8 @@ enum Commands {
         #[arg(short, long)]
         setup: bool,
 
-        /// Upload for Windows
-        #[arg(long)]
-        windows: bool,
-
-        /// Upload for Linux
-        #[arg(long)]
-        linux: bool,
-
-        /// Upload for Web
-        #[arg(long)]
-        web: bool,
-
-        /// Upload for macOS
-        #[arg(long)]
-        macos: bool,
-
-        /// Upload for iOS
-        #[arg(long)]
-        ios: bool,
-
-        /// Upload for Android
-        #[arg(long)]
-        android: bool,
+        #[command(flatten)]
+        platform: PlatformFlags,
 
         /// Export in debug mode before upload
         #[arg(short, long)]
@@ -191,29 +151,8 @@ enum TemplatesAction {
         #[arg(value_name = "GODOT_VERSION")]
         godot_version: String,
 
-        /// Export for Windows
-        #[arg(long)]
-        windows: bool,
-
-        /// Export for Linux
-        #[arg(long)]
-        linux: bool,
-
-        /// Export for Web
-        #[arg(long)]
-        web: bool,
-
-        /// Export for macOS
-        #[arg(long)]
-        macos: bool,
-
-        /// Export for iOS
-        #[arg(long)]
-        ios: bool,
-
-        /// Export for Android
-        #[arg(long)]
-        android: bool,
+        #[command(flatten)]
+        platform: PlatformFlags,
     },
 
     /// Remove export templates for a version
@@ -222,29 +161,8 @@ enum TemplatesAction {
         #[arg(value_name = "GODOT_VERSION")]
         godot_version: String,
 
-        /// Remove Windows templates only
-        #[arg(long)]
-        windows: bool,
-
-        /// Remove Linux templates only
-        #[arg(long)]
-        linux: bool,
-
-        /// Remove Web templates only
-        #[arg(long)]
-        web: bool,
-
-        /// Remove macOS templates only
-        #[arg(long)]
-        macos: bool,
-
-        /// Remove iOS templates only
-        #[arg(long)]
-        ios: bool,
-
-        /// Remove Android templates only
-        #[arg(long)]
-        android: bool,
+        #[command(flatten)]
+        platform: PlatformFlags,
     },
 }
 
@@ -365,40 +283,16 @@ fn main() -> anyhow::Result<()> {
             Commands::New { name } => {
                 commands::new::run(&name, &mut config)?;
             }
-            Commands::Build {
-                windows,
-                linux,
-                web,
-                macos,
-                ios,
-                android,
-                debug,
-            } => {
-                commands::build::run(windows, linux, web, macos, ios, android, debug, &config)?;
+            Commands::Build { platform, debug } => {
+                commands::build::run(&platform, debug, &config)?;
             }
             Commands::Up {
                 setup,
-                windows,
-                linux,
-                web,
-                macos,
-                ios,
-                android,
+                platform,
                 debug,
                 name,
             } => {
-                commands::up::run(
-                    setup,
-                    windows,
-                    linux,
-                    web,
-                    macos,
-                    ios,
-                    android,
-                    debug,
-                    name,
-                    &mut config,
-                )?;
+                commands::up::run(setup, &platform, debug, name, &mut config)?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;
@@ -467,43 +361,15 @@ fn main() -> anyhow::Result<()> {
                 }
                 Some(TemplatesAction::Add {
                     godot_version,
-                    windows,
-                    linux,
-                    web,
-                    macos,
-                    ios,
-                    android,
+                    platform,
                 }) => {
-                    commands::templates::add::run(
-                        &godot_version,
-                        windows,
-                        linux,
-                        web,
-                        macos,
-                        ios,
-                        android,
-                        &mut config,
-                    )?;
+                    commands::templates::add::run(&godot_version, &platform, &mut config)?;
                 }
                 Some(TemplatesAction::Remove {
                     godot_version,
-                    windows,
-                    linux,
-                    web,
-                    macos,
-                    ios,
-                    android,
+                    platform,
                 }) => {
-                    commands::templates::remove::run(
-                        &godot_version,
-                        windows,
-                        linux,
-                        web,
-                        macos,
-                        ios,
-                        android,
-                        &mut config,
-                    )?;
+                    commands::templates::remove::run(&godot_version, &platform, &mut config)?;
                 }
             },
         },

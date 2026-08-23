@@ -1,5 +1,6 @@
 use crate::config::{self, Config};
 use crate::github;
+use crate::platform::PlatformFlags;
 use anyhow::Result;
 use console::Style;
 use indicatif::{MultiProgress, ProgressBar};
@@ -112,17 +113,7 @@ async fn download_modern_templates(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn run(
-    version: &str,
-    windows: bool,
-    linux: bool,
-    web: bool,
-    macos: bool,
-    ios: bool,
-    android: bool,
-    _config: &mut Config,
-) -> Result<()> {
+pub fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
 
     // Check if this is a pre-4.x version (full .tpz download)
@@ -132,37 +123,19 @@ pub fn run(
         .and_then(|s| s.parse::<u32>().ok())
         .is_some_and(|major| major < 4);
 
-    let has_flag = windows || linux || web || macos || ios || android;
-    let mut platforms = Vec::new();
-    if !has_flag {
-        platforms = vec![
+    let platforms = if !platform.any() {
+        vec![
             "windows".to_string(),
             "linux".to_string(),
             "web".to_string(),
             "macos".to_string(),
             "ios".to_string(),
             "android".to_string(),
-        ];
+            "visionos".to_string(),
+        ]
     } else {
-        if windows {
-            platforms.push("windows".to_string());
-        }
-        if linux {
-            platforms.push("linux".to_string());
-        }
-        if web {
-            platforms.push("web".to_string());
-        }
-        if macos {
-            platforms.push("macos".to_string());
-        }
-        if ios {
-            platforms.push("ios".to_string());
-        }
-        if android {
-            platforms.push("android".to_string());
-        }
-    }
+        platform.to_platforms()
+    };
 
     let godot_dir = Config::get_godot_templates_dir().join(format!("{}.{}", base_version, flavor));
 

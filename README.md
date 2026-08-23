@@ -116,9 +116,10 @@ gdio build --windows                          # Windows only
 gdio build --linux --web                      # Linux + Web
 gdio build --macos --ios                      # macOS + iOS
 gdio build --android                          # Android
+gdio build --visionos                         # visionOS
 ```
 
-Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
+Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`, `--visionos`
 
 Export debug flag : `--debug`/`-d`
 
@@ -136,7 +137,7 @@ gdio up --linux --web                         # build + upload Linux + Web
 gdio up --name                                # interactive channel name customization per platform
 ```
 
-Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`
+Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`, `--visionos`
 
 Export debug flag : `--debug`/`-d`
 
@@ -277,6 +278,7 @@ Addons marked as global are synced to all projects unless excluded. Use `gdio ad
 | Web | `--web` |
 | iOS | `--ios` |
 | Android | `--android` |
+| visionOS | `--visionos` |
 
 ## Config
 

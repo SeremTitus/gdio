@@ -24,6 +24,9 @@ pub fn detect_platforms(dir: &Path) -> Result<Vec<String>> {
     if installed.iter().any(|f| f.starts_with("android")) {
         platforms.push("android".to_string());
     }
+    if installed.iter().any(|f| f.starts_with("visionos")) {
+        platforms.push("visionos".to_string());
+    }
 
     Ok(platforms)
 }
@@ -180,6 +183,13 @@ fn get_template_groups() -> Vec<TemplateGroup<'static>> {
             templates: vec![TemplateInfo {
                 name: "iOS",
                 files: vec!["ios.zip"],
+            }],
+        },
+        TemplateGroup {
+            platform: "visionOS",
+            templates: vec![TemplateInfo {
+                name: "visionOS",
+                files: vec!["visionos.zip"],
             }],
         },
     ]

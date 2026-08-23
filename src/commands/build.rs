@@ -1,19 +1,10 @@
 use crate::config::{self, Config};
+use crate::platform::PlatformFlags;
 use crate::project;
 use anyhow::{Context, Result};
 use console::Style;
 
-#[allow(clippy::too_many_arguments)]
-pub fn run(
-    windows: bool,
-    linux: bool,
-    web: bool,
-    macos: bool,
-    ios: bool,
-    android: bool,
-    debug: bool,
-    config: &Config,
-) -> Result<()> {
+pub fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
@@ -33,47 +24,27 @@ pub fn run(
         anyhow::bail!("No export presets found in export_presets.cfg.");
     }
 
-    let has_flag = windows || linux || web || macos || ios || android;
-    let mut platforms = Vec::new();
-    if has_flag {
-        if windows {
-            platforms.push("windows".to_string());
-        }
-        if linux {
-            platforms.push("linux".to_string());
-        }
-        if web {
-            platforms.push("web".to_string());
-        }
-        if macos {
-            platforms.push("macos".to_string());
-        }
-        if ios {
-            platforms.push("ios".to_string());
-        }
-        if android {
-            platforms.push("android".to_string());
-        }
+    let platforms = if platform.any() {
+        platform.to_platforms()
     } else {
         // No flags: auto-detect from export presets
+        let mut detected = Vec::new();
         let mut seen = std::collections::HashSet::new();
         for preset in &presets {
             if let Some(gdio_platform) = project::godot_platform_to_gdio(&preset.platform)
                 && seen.insert(gdio_platform.to_string())
             {
-                platforms.push(gdio_platform.to_string());
+                detected.push(gdio_platform.to_string());
             }
         }
-        if platforms.is_empty() {
+        if detected.is_empty() {
             anyhow::bail!(
                 "Could not detect platforms from export presets. Use platform flags explicitly."
             );
         }
-        println!(
-            "Detected platforms from presets: {}\n",
-            platforms.join(", ")
-        );
-    }
+        println!("Detected platforms from presets: {}\n", detected.join(", "));
+        detected
+    };
 
     let project_path = cwd.to_string_lossy().to_string();
     let project_name =
@@ -170,6 +141,7 @@ pub fn run(
                     "windows" => ".exe",
                     "macos" => ".app",
                     "ios" => ".ipa",
+                    "visionos" => ".ipa",
                     "android" => ".apk",
                     _ => "",
                 };

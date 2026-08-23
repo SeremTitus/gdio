@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::platform::PlatformFlags;
 use crate::project;
 use anyhow::{Context, Result};
 use console::Style;
@@ -33,15 +34,9 @@ fn detect_butler() -> Option<String> {
     None
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run(
     setup: bool,
-    windows: bool,
-    linux: bool,
-    web: bool,
-    macos: bool,
-    ios: bool,
-    android: bool,
+    platform: &PlatformFlags,
     debug: bool,
     name: bool,
     config: &mut Config,
@@ -49,9 +44,7 @@ pub fn run(
     if setup {
         return run_setup(config);
     }
-    run_upload(
-        windows, linux, web, macos, ios, android, debug, name, config,
-    )
+    run_upload(platform, debug, name, config)
 }
 
 fn run_setup(config: &mut Config) -> Result<()> {
@@ -144,18 +137,7 @@ fn snake_case(s: &str) -> String {
         .collect()
 }
 
-#[allow(clippy::too_many_arguments)]
-fn run_upload(
-    windows: bool,
-    linux: bool,
-    web: bool,
-    macos: bool,
-    ios: bool,
-    android: bool,
-    debug: bool,
-    name: bool,
-    config: &Config,
-) -> Result<()> {
+fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
@@ -206,28 +188,8 @@ fn run_upload(
 
     // Determine which platforms to build/upload
     let unique_platforms: Vec<String> = platform_presets.keys().cloned().collect();
-    let has_flag = windows || linux || web || macos || ios || android;
-    let platforms: Vec<String> = if has_flag {
-        let mut v = Vec::new();
-        if windows {
-            v.push("windows".to_string());
-        }
-        if linux {
-            v.push("linux".to_string());
-        }
-        if web {
-            v.push("web".to_string());
-        }
-        if macos {
-            v.push("macos".to_string());
-        }
-        if ios {
-            v.push("ios".to_string());
-        }
-        if android {
-            v.push("android".to_string());
-        }
-        v
+    let platforms: Vec<String> = if platform.any() {
+        platform.to_platforms()
     } else {
         unique_platforms
     };
@@ -235,7 +197,10 @@ fn run_upload(
     // For each selected platform, pick a preset (prompt if multiple)
     let mut selected_presets: Vec<(String, &project::ExportPreset)> = Vec::new();
     for platform in &platforms {
-        let presets_for = &platform_presets[platform];
+        let Some(presets_for) = platform_presets.get(platform) else {
+            println!("Skipping {} - no export preset found", platform);
+            continue;
+        };
         let preset = if presets_for.len() == 1 {
             presets_for[0]
         } else {
@@ -365,6 +330,7 @@ fn run_upload(
                 "windows" => ".exe",
                 "macos" => ".app",
                 "ios" => ".ipa",
+                "visionos" => ".ipa",
                 "android" => ".apk",
                 _ => "",
             };

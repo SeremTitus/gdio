@@ -147,6 +147,7 @@ pub fn godot_platform_to_gdio(godot_platform: &str) -> Option<&'static str> {
         "macOS" | "Mac OSX" => Some("macos"),
         "iOS" => Some("ios"),
         "Android" => Some("android"),
+        "visionOS" => Some("visionos"),
         _ => None,
     }
 }
