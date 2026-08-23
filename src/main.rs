@@ -397,13 +397,13 @@ fn main() -> anyhow::Result<()> {
             },
             Commands::Templates { action } => match action {
                 None | Some(TemplatesAction::List) => {
-                    commands::templates::run_list(&config)?;
+                    commands::templates::list::run(&config)?;
                 }
                 Some(TemplatesAction::Add { godot_version, windows, linux, web, macos, ios, android }) => {
-                    commands::templates::run_add(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
+                    commands::templates::add::run(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
                 }
                 Some(TemplatesAction::Remove { godot_version, windows, linux, web, macos, ios, android }) => {
-                    commands::templates::run_remove(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
+                    commands::templates::remove::run(&godot_version, windows, linux, web, macos, ios, android, &mut config)?;
                 }
             },
         },
