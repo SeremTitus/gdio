@@ -153,6 +153,20 @@ enum Commands {
     /// Show disk space used by gdio
     Cost,
 
+    /// Run GUT tests
+    Test {
+        /// Install GUT addon
+        #[arg(short, long)]
+        init: bool,
+
+        /// Open GUT test runner window (no headless)
+        #[arg(short, long)]
+        visual: bool,
+
+        /// Test folder (relative path, e.g. "test" → res://test/)
+        folder: Option<String>,
+    },
+
     /// Manage addons from the asset library
     Addons {
         #[command(subcommand)]
@@ -359,6 +373,9 @@ fn main() -> anyhow::Result<()> {
             }
             Commands::Cost => {
                 commands::cost::run(&config)?;
+            }
+            Commands::Test { init, visual, folder } => {
+                commands::test::run(init, visual, folder.as_deref(), &mut config)?;
             }
             Commands::Addons { action } => match action {
                 None => {
