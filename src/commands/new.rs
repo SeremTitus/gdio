@@ -84,38 +84,6 @@ pub fn run(name: &str, config: &mut Config) -> Result<()> {
     fs::create_dir_all(&project_dir)
         .with_context(|| format!("Failed to create directory: {}", project_dir.display()))?;
 
-    // Create project.godot
-    let project_file = project_dir.join("project.godot");
-    let content = format!(
-        r#"; Engine configuration file.
-; It's best edited using the editor UI and not directly,
-; since the parameters that go here are not all obvious.
-;
-; Format:
-;   [section] ; section goes between []
-;   param=value ; assign values to parameters
-
-config_version=5
-
-[application]
-
-config/name="{}"
-config/features=PackedStringArray("4.4", "{}")
-
-[rendering]
-
-renderer/rendering_method="{}"
-renderer/rendering_method.mobile="{}"
-"#,
-        name,
-        renderer.feature_name(),
-        renderer.method(),
-        renderer.mobile_method(),
-    );
-    fs::write(&project_file, content).context("Failed to write project.godot")?;
-
-    println!("Created project: {}", project_dir.display());
-
     // Select editor and open
     let editors: Vec<_> = config.editors.values().cloned().collect();
     let mut options: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
@@ -142,6 +110,41 @@ renderer/rendering_method.mobile="{}"
     } else {
         editors[idx].clone()
     };
+
+    // Create project.godot with version from selected editor
+    let (engine_version, _) = crate::config::parse_version_flavor(&editor.version);
+    let project_file = project_dir.join("project.godot");
+    let content = format!(
+        r#"; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="{}"
+config/features=PackedStringArray("{}", "{}")
+
+[rendering]
+
+renderer/rendering_method="{}"
+renderer/rendering_method.mobile="{}"
+"#,
+        name,
+        engine_version,
+        renderer.feature_name(),
+        renderer.method(),
+        renderer.mobile_method(),
+    );
+    fs::write(&project_file, content).context("Failed to write project.godot")?;
+
+    println!("Created project: {}", project_dir.display());
+
     println!("Opening with {}...", editor.name);
     godot::open_project_editor_mode(&editor.path, &project_file)?;
 
