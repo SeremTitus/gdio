@@ -20,6 +20,7 @@ anyhow = "1"
 futures-util = "0.3"
 indicatif = "0.17"
 tempfile = "3"
+toml = "1"
 
 [profile.release]
 opt-level = "z"

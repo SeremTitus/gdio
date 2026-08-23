@@ -153,6 +153,12 @@ enum Commands {
     /// Show disk space used by gdio
     Cost,
 
+    /// Manage addons from the asset library
+    Addons {
+        #[command(subcommand)]
+        action: Option<AddonsAction>,
+    },
+
     /// Manage export templates
     Templates {
         #[command(subcommand)]
@@ -229,11 +235,76 @@ enum TemplatesAction {
     },
 }
 
+#[derive(Subcommand)]
+#[command(rename_all = "lowercase")]
+enum AddonsAction {
+    /// Install an addon (identifier: publisher/asset)
+    Add {
+        /// Addon identifier in format publisher/asset (e.g., bitwes/gut)
+        identifier: String,
+
+        /// Link addon globally (stored in gdio config, symlinked into project)
+        #[arg(short, long)]
+        linked: bool,
+
+        /// Interactively select which version to install
+        #[arg(short = 's', long)]
+        select: bool,
+    },
+
+    /// List addons
+    List {
+        /// List linked addons
+        #[arg(short, long)]
+        linked: bool,
+    },
+
+    /// Remove addon(s) by folder name (interactive if no arguments)
+    Remove {
+        /// Folder name(s) or identifier(s) of addons to remove
+        identifiers: Vec<String>,
+    },
+
+    /// Manage global addons (synced to all projects unless excluded)
+    Globals {
+        /// Addon identifier to add as global
+        identifier: Option<String>,
+
+        /// Interactively remove a global addon (stops syncing to new projects)
+        #[arg(short, long)]
+        remove: bool,
+
+        /// Interactively select which version to install
+        #[arg(short, long)]
+        select: bool,
+
+        /// Store in global cache and symlink into projects (instead of copying)
+        #[arg(short, long)]
+        linked: bool,
+    },
+
+    /// Manage project exclusions for global addons
+    Exclude {
+        /// Addon identifier to exclude from this project
+        identifier: Option<String>,
+
+        /// Revert the exclusion (re-add this project to the addon's sync list)
+        #[arg(short = 'r', long)]
+        revert: bool,
+    },
+
+    /// Sync linked and global addons
+    Sync,
+
+    /// Manage addon repositories (list or toggle add/remove by URL)
+    Repository {
+        /// Repository URL (omit to list, provide to toggle add/remove)
+        url: Option<String>,
+    },
+}
+
 fn main() -> anyhow::Result<()> {
-    let raw_args: Vec<String> = std::env::args().collect();
-    let args: Vec<String> = raw_args.iter().map(|a| a.to_lowercase()).collect();
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let cli = Cli::parse_from(args);
+    let cli = Cli::parse();
 
     if cli.version {
         println!("gdio {}", env!("CARGO_PKG_VERSION"));
@@ -289,6 +360,41 @@ fn main() -> anyhow::Result<()> {
             Commands::Cost => {
                 commands::cost::run(&config)?;
             }
+            Commands::Addons { action } => match action {
+                None => {
+                    commands::addons::list::run(&config, false)?;
+                }
+                Some(AddonsAction::List { linked }) => {
+                    commands::addons::list::run(&config, linked)?;
+                }
+                Some(AddonsAction::Add { identifier, linked, select }) => {
+                    let identifier = identifier.to_lowercase();
+                    commands::addons::add::run(&mut config, &identifier, linked, select)?;
+                }
+                Some(AddonsAction::Remove { identifiers }) => {
+                    let identifiers: Vec<String> = identifiers.iter().map(|s| s.to_lowercase()).collect();
+                    commands::addons::remove::run(&mut config, &identifiers)?;
+                }
+                Some(AddonsAction::Globals { identifier, remove, select, linked }) => {
+                    let identifier = identifier.map(|s| s.to_lowercase());
+                    commands::addons::globals::run(&mut config, identifier.as_deref(), remove, select, linked)?;
+                }
+                Some(AddonsAction::Exclude { identifier, revert }) => {
+                    let identifier = identifier.map(|s| s.to_lowercase());
+                    commands::addons::exclude::run(&mut config, identifier.as_deref(), revert)?;
+                }
+                Some(AddonsAction::Sync) => {
+                    let cwd = std::env::current_dir()?;
+                    let rt = tokio::runtime::Runtime::new()?;
+                    commands::addons::sync::run(&mut config, &cwd, &rt)?;
+                }
+                Some(AddonsAction::Repository { url }) => {
+                    commands::addons::repository::run(
+                        &mut config,
+                        url.as_deref(),
+                    )?;
+                }
+            },
             Commands::Templates { action } => match action {
                 None | Some(TemplatesAction::List) => {
                     commands::templates::run_list(&config)?;

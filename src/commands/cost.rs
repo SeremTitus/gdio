@@ -37,6 +37,7 @@ fn format_size(bytes: u64) -> String {
 
 pub fn run(_config: &Config) -> Result<()> {
     let config_dir = Config::config_dir();
+    let global_addons_dir = Config::get_global_addons_dir();
     let editors_dir = Config::get_editors_dir();
     let templates_dir = Config::get_godot_templates_dir();
 
@@ -50,6 +51,7 @@ pub fn run(_config: &Config) -> Result<()> {
 
     let config_path = config_dir.join("config.json");
     let config_size = dir_size(&config_path);
+    let global_addons_size = dir_size(&global_addons_dir);
     let editors_size = dir_size(&editors_dir);
     let templates_size = dir_size(&templates_dir);
 
@@ -66,6 +68,7 @@ pub fn run(_config: &Config) -> Result<()> {
     println!("{}", "-".repeat(70));
     println!("  {:<25} {:<12} {}", "Binary (gdio)", format_size(binary_size), dim.apply_to(&binary_path));
     println!("  {:<25} {:<12} {}", "Config file", format_size(config_size), dim.apply_to(config_path.display()));
+    println!("  {:<25} {:<12} {}", "Linked addons", format_size(global_addons_size), dim.apply_to(global_addons_dir.display()));
     println!("  {:<25} {:<12} {}", "Downloaded editors", format_size(editors_size), dim.apply_to(editors_dir.display()));
     println!("  {:<25} {:<12} {}", "Export templates", format_size(templates_size), dim.apply_to(templates_dir.display()));
     println!("{}", "-".repeat(70));
