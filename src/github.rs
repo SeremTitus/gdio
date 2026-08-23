@@ -151,11 +151,13 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
     if platform == "unknown" {
         return None;
     }
+    let platform_underscored = platform.replace('.', "_");
 
     if cfg!(target_os = "windows") {
         let console = release.assets.iter().find(|a| {
             let name = &a.name;
-            let matches_platform = name.contains(platform);
+            let matches_platform =
+                name.contains(platform) || name.contains(&platform_underscored);
             let matches_mono = if is_mono {
                 name.contains("mono")
             } else {
@@ -179,7 +181,8 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
 
     release.assets.iter().find(|a| {
         let name = &a.name;
-        let matches_platform = name.contains(platform);
+        let matches_platform =
+            name.contains(platform) || name.contains(&platform_underscored);
         let matches_mono = if is_mono {
             name.contains("mono")
         } else {
@@ -349,26 +352,45 @@ pub async fn download_and_extract_editor_auto(
 }
 
 pub fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
-    let mut console_exe = None;
-    let mut regular_exe = None;
+    let mut candidates = Vec::new();
 
-    if cfg!(target_os = "macos") {
-        for entry in std::fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() && path.extension().is_some_and(|e| e == "app") {
-                let macos_bin = path.join("Contents").join("MacOS").join("Godot");
-                if macos_bin.exists() {
-                    return Ok(macos_bin);
-                }
-            }
-        }
-    }
+    find_executable_in_dir_recursive(dir, &mut candidates)?;
 
+    let console_exe = candidates.iter().find(|p| {
+        p.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .contains("console")
+    });
+    let regular_exe = candidates.iter().find(|p| {
+        !p.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .contains("console")
+    });
+
+    console_exe
+        .or(regular_exe)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("No Godot executable found in extracted directory"))
+}
+
+fn find_executable_in_dir_recursive(dir: &Path, candidates: &mut Vec<PathBuf>) -> Result<()> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        if path.is_file() {
+        if path.is_dir() {
+            if cfg!(target_os = "macos") {
+                if path.extension().is_some_and(|e| e == "app") {
+                    let macos_bin = path.join("Contents").join("MacOS").join("Godot");
+                    if macos_bin.exists() {
+                        candidates.push(macos_bin);
+                        return Ok(());
+                    }
+                }
+            }
+            find_executable_in_dir_recursive(&path, candidates)?;
+        } else if path.is_file() {
             let name = path.file_name().unwrap().to_string_lossy();
             let is_exe = if cfg!(target_os = "windows") {
                 name.ends_with(".exe")
@@ -386,16 +408,9 @@ pub fn find_executable_in_dir(dir: &Path) -> Result<PathBuf> {
                 }
             };
             if is_exe && (name.to_lowercase().contains("godot") || name.starts_with("Godot")) {
-                if name.contains("console") {
-                    console_exe = Some(path);
-                } else if regular_exe.is_none() {
-                    regular_exe = Some(path);
-                }
+                candidates.push(path);
             }
         }
     }
-
-    console_exe
-        .or(regular_exe)
-        .ok_or_else(|| anyhow::anyhow!("No Godot executable found in extracted directory"))
+    Ok(())
 }

@@ -248,7 +248,11 @@ impl Config {
     }
 
     pub fn register_editor(&mut self, editor: EditorInfo) {
-        let key = editor.version.clone();
+        let key = if editor.is_mono {
+            format!("{}-csharp", editor.version)
+        } else {
+            editor.version.clone()
+        };
         self.editors.insert(key, editor);
     }
 

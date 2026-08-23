@@ -45,12 +45,14 @@ fn register_downloaded_editor(
     config: &mut Config,
 ) -> Result<Option<EditorInfo>> {
     if let Some(existing) = config.find_editor_for_version(version_key) {
-        println!(
-            "Already exists: {} ({})",
-            existing.name,
-            existing.path.display()
-        );
-        return Ok(None);
+        if existing.is_mono == csharp {
+            println!(
+                "Already exists: {} ({})",
+                existing.name,
+                existing.path.display()
+            );
+            return Ok(None);
+        }
     }
 
     let editor_name = if csharp {
@@ -93,8 +95,10 @@ pub async fn download_version(
     if let Ok(exe_path) = github::find_executable_in_dir(&dest_dir) {
         println!("Already exists: {}", exe_path.display());
         if let Some(existing) = config.find_editor_for_version(&version_key) {
-            println!("Already registered: {} ({})", existing.name, existing.path.display());
-            return Ok(None);
+            if existing.is_mono == csharp {
+                println!("Already registered: {} ({})", existing.name, existing.path.display());
+                return Ok(None);
+            }
         }
         return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
     }
@@ -128,8 +132,10 @@ pub async fn download_version_auto(
             Err(_) => {
                 // API failed — try to find an already-registered editor for this version prefix
                 if let Some(existing) = config.find_editor_for_version(version) {
-                    println!("Already registered: {} ({})", existing.name, existing.path.display());
-                    return Ok(None);
+                    if existing.is_mono == csharp {
+                        println!("Already registered: {} ({})", existing.name, existing.path.display());
+                        return Ok(None);
+                    }
                 }
                 // API unavailable and no registered editor — default to "stable"
                 eprintln!("Warning: GitHub API unavailable, defaulting to 'stable' stage for '{}'", version);
@@ -139,8 +145,10 @@ pub async fn download_version_auto(
         let version_key = format!("{}-{}", version, stage);
         // Try to find and register if not in config
         if let Some(existing) = config.find_editor_for_version(&version_key) {
-            println!("Already registered: {} ({})", existing.name, existing.path.display());
-            return Ok(None);
+            if existing.is_mono == csharp {
+                println!("Already registered: {} ({})", existing.name, existing.path.display());
+                return Ok(None);
+            }
         }
         // Register existing executable
         return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
