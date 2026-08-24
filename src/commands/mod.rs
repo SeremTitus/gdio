@@ -2,6 +2,7 @@ pub mod add;
 pub mod addons;
 pub mod bind;
 pub mod build;
+pub mod clone;
 pub mod cost;
 pub mod default;
 pub mod game;

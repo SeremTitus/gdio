@@ -151,6 +151,19 @@ enum Commands {
         name: String,
     },
 
+    /// Clone a Godot project from a git repository and open it
+    Clone {
+        /// Git repository URL
+        url: String,
+
+        /// Directory name (extracted from URL if omitted)
+        dir: Option<String>,
+
+        /// Shallow clone with given depth
+        #[arg(short, long)]
+        depth: Option<u32>,
+    },
+
     /// Export the current project
     Build {
         #[command(flatten)]
@@ -399,6 +412,9 @@ async fn main() -> anyhow::Result<()> {
             }
             Commands::New { name } => {
                 commands::new::run(&name, &mut config).await?;
+            }
+            Commands::Clone { url, dir, depth } => {
+                commands::clone::run(&url, dir.as_deref(), depth, &mut config).await?;
             }
             Commands::Build { platform, debug } => {
                 commands::build::run(&platform, debug, &config).await?;

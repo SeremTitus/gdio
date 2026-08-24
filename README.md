@@ -106,6 +106,16 @@ Create a new Godot project in a subdirectory.
 gdio new MyGame                               # create project in ./MyGame/
 ```
 
+### `gdio clone <url>`
+
+Clone a Godot project from a git repository and open it.
+
+```bash
+gdio clone https://github.com/user/repo       # clone and open
+gdio clone https://github.com/user/repo mydir # clone into ./mydir/
+gdio clone https://github.com/user/repo -d 1  # shallow clone (--depth 1)
+```
+
 ### `gdio build`
 
 Export the current project. Reads presets from `export_presets.cfg`.
