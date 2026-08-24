@@ -143,6 +143,14 @@ function Main {
     Install-Binary $tempFile
     Setup-Path
 
+    # Install shell completions
+    & "$INSTALL_DIR\gdio.exe" completions --install 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Info "Shell completions installed"
+    } else {
+        Write-Warn "Could not install shell completions (non-critical)"
+    }
+
     Write-Host ""
 
     # Print centered ASCII art
