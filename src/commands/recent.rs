@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::godot;
-use anyhow::{Context, Result};
-use std::time::{SystemTime, UNIX_EPOCH};
+use anyhow::Result;
 
 pub async fn run(config: &mut Config) -> Result<()> {
     if config.projects.is_empty() {
@@ -10,33 +9,12 @@ pub async fn run(config: &mut Config) -> Result<()> {
         return Ok(());
     }
 
+    super::shared::cleanup_missing_projects(config)?;
+
     let mut projects: Vec<_> = config.projects.values().cloned().collect();
     projects.sort_by(|a, b| b.last_opened.cmp(&a.last_opened));
 
-    let mut removed_any = false;
-    let mut recent = None;
-    for project in &projects {
-        let project_file = project.path.join("project.godot");
-        if !project_file.exists() {
-            println!(
-                "Removed missing project: {} ({})",
-                project.name,
-                project.path.display()
-            );
-            config.remove_project(&project.path.to_string_lossy());
-            removed_any = true;
-        } else {
-            recent = Some(project.clone());
-            break;
-        }
-    }
-
-    if removed_any {
-        config.save()?;
-        println!();
-    }
-
-    let recent = match recent {
+    let recent = match projects.into_iter().next() {
         Some(p) => p,
         None => {
             println!("No recent project found.");
@@ -55,65 +33,9 @@ pub async fn run(config: &mut Config) -> Result<()> {
         anyhow::bail!("Project file not found: {}", project_file.display());
     }
 
-    let mut editor = recent
-        .bound_editor
-        .as_ref()
-        .and_then(|v| config.find_editor_for_version(v))
-        .cloned();
-
-    if let Some(ref e) = editor
-        && !e.path.exists()
-    {
-        println!("Editor binary not found: {}", e.path.display());
-        editor = None;
-    }
-
-    let editor = match editor {
-        Some(e) => e,
-        None => {
-            let mut options: Vec<String> =
-                config.editors.values().map(|e| e.name.clone()).collect();
-            options.push("[add editor]".to_string());
-
-            let idx = dialoguer::FuzzySelect::new()
-                .with_prompt("Select editor")
-                .items(&options)
-                .default(0)
-                .interact()?;
-
-            if options[idx] == "[add editor]" {
-                let version: String = dialoguer::Input::new()
-                    .with_prompt("Editor version (e.g. 4.7, 4.7-stable, or path)")
-                    .interact_text()?;
-                let csharp = dialoguer::Confirm::new()
-                    .with_prompt("C# support?")
-                    .default(false)
-                    .interact()?;
-                crate::commands::add::run(&version, None, csharp, config)
-                    .await?
-                    .context("Editor was not added")?
-            } else {
-                let editors: Vec<_> = config.editors.values().cloned().collect();
-                editors[idx].clone()
-            }
-        }
-    };
+    let editor = super::shared::resolve_editor(config, recent.bound_editor.as_deref()).await?;
 
     godot::open_project_editor_mode(&editor.path, &project_file)?;
-
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        .to_string();
-
-    let project_info = crate::config::ProjectInfo {
-        path: recent.path,
-        name: recent.name,
-        bound_editor: Some(editor.version.clone()),
-        last_opened: Some(now),
-    };
-    config.register_project(&project_info);
-    config.save()?;
+    super::shared::register_opened_project(config, recent.path, recent.name, &editor.version)?;
     Ok(())
 }

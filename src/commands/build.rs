@@ -49,16 +49,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
     let project_path = cwd.to_string_lossy().to_string();
     let project_name =
         project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
-    let project_snake: String = project_name
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c.to_ascii_lowercase()
-            } else {
-                '_'
-            }
-        })
-        .collect();
+    let project_snake = super::shared::snake_case(&project_name);
 
     let editor_version = config
         .projects
@@ -118,17 +109,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
         let output_file = if let Some(ref export_path) = preset.export_path {
             cwd.join(export_path)
         } else {
-            let preset_snake: String = preset
-                .name
-                .chars()
-                .map(|c| {
-                    if c.is_ascii_alphanumeric() {
-                        c.to_ascii_lowercase()
-                    } else {
-                        '_'
-                    }
-                })
-                .collect();
+            let preset_snake = super::shared::snake_case(&preset.name);
             if preset_platform == "web" {
                 output_dir.join(&preset_snake).join("index.html")
             } else if preset_platform == "linux" {

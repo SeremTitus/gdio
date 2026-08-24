@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::project;
 use anyhow::{Context, Result};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
@@ -70,20 +69,7 @@ pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
 
     config.update_project_editor(&project_path, &selected_editor.version);
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        .to_string();
-
-    let project_info = crate::config::ProjectInfo {
-        path: cwd,
-        name: project_name,
-        bound_editor: Some(selected_editor.version.clone()),
-        last_opened: Some(now),
-    };
-    config.register_project(&project_info);
-    config.save()?;
+    super::shared::register_opened_project(config, cwd, project_name, &selected_editor.version)?;
 
     println!("Bound project to: {}", selected_editor.name);
     Ok(())

@@ -1,16 +1,16 @@
 use crate::config::Config;
 use crate::godot;
 use crate::project;
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub async fn run(config: &mut Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+    let cwd = std::env::current_dir()?;
     let project_file = cwd.join("project.godot");
 
     if !project_file.exists() {
-        println!("No Godot project found in current directory.");
-        println!("Use `gdio --help` for usage information.");
-        return Ok(());
+        anyhow::bail!(
+            "No Godot project found in current directory.\nUse `gdio --help` for usage information."
+        );
     }
 
     let project_path = cwd.to_string_lossy().to_string();
@@ -28,22 +28,17 @@ pub async fn run(config: &mut Config) -> Result<()> {
     // Check if we've opened this project before
     if let Some(existing) = config.projects.get(&project_path)
         && let Some(ref editor_version) = existing.bound_editor
-        && let Some(editor) = config.find_editor_for_version(editor_version)
-        && editor.path.exists()
     {
-        println!("Opening with {}...", editor.name);
-        godot::open_project_editor_mode(&editor.path, &project_file)?;
-
-        let now = chrono_now();
-        let project_info = crate::config::ProjectInfo {
-            path: cwd,
-            name: project_name,
-            bound_editor: Some(editor_version.clone()),
-            last_opened: Some(now),
-        };
-        config.register_project(&project_info);
-        config.save()?;
-        return Ok(());
+        let editor_version = editor_version.clone();
+        if let Some(editor) = config.find_editor_for_version(&editor_version)
+            && editor.path.exists()
+        {
+            println!("Opening with {}...", editor.name);
+            let path = project_file.clone();
+            godot::open_project_editor_mode(&editor.path, &path)?;
+            super::shared::register_opened_project(config, cwd, project_name, &editor_version)?;
+            return Ok(());
+        }
     }
 
     // Try to find editor for detected version
@@ -54,17 +49,10 @@ pub async fn run(config: &mut Config) -> Result<()> {
             && editor.path.exists()
         {
             println!("Found editor: {}", editor.name);
-            godot::open_project_editor_mode(&editor.path, &project_file)?;
-
-            let now = chrono_now();
-            let project_info = crate::config::ProjectInfo {
-                path: cwd,
-                name: project_name,
-                bound_editor: Some(editor.version.clone()),
-                last_opened: Some(now),
-            };
-            config.register_project(&project_info);
-            config.save()?;
+            let path = project_file.clone();
+            let editor_version = editor.version.clone();
+            godot::open_project_editor_mode(&editor.path, &path)?;
+            super::shared::register_opened_project(config, cwd, project_name, &editor_version)?;
             return Ok(());
         }
 
@@ -96,17 +84,7 @@ pub async fn run(config: &mut Config) -> Result<()> {
                     .interact()?;
                 let editor = &editors[idx];
                 godot::open_project_editor_mode(&editor.path, &project_file)?;
-
-                let now = chrono_now();
-                let editor_ver = editor.version.clone();
-                let project_info = crate::config::ProjectInfo {
-                    path: cwd,
-                    name: project_name,
-                    bound_editor: Some(editor_ver),
-                    last_opened: Some(now),
-                };
-                config.register_project(&project_info);
-                config.save()?;
+                super::shared::register_opened_project(config, cwd, project_name, &editor.version)?;
             }
             1 => {
                 let version = version.clone();
@@ -114,19 +92,18 @@ pub async fn run(config: &mut Config) -> Result<()> {
 
                 if let Some(editor) = config.find_editor_for_version(&version) {
                     let project_file = std::env::current_dir()?.join("project.godot");
-                    godot::open_project_editor_mode(&editor.path, &project_file)?;
+                    let editor_path = editor.path.clone();
+                    let editor_version = editor.version.clone();
+                    godot::open_project_editor_mode(&editor_path, &project_file)?;
                     let cwd = std::env::current_dir()?;
                     let project_name = project::parse_project_name(&project_file)
                         .unwrap_or_else(|| "Unknown Project".to_string());
-                    let now = chrono_now();
-                    let project_info = crate::config::ProjectInfo {
-                        path: cwd,
-                        name: project_name,
-                        bound_editor: Some(editor.version.clone()),
-                        last_opened: Some(now),
-                    };
-                    config.register_project(&project_info);
-                    config.save()?;
+                    super::shared::register_opened_project(
+                        config,
+                        cwd,
+                        project_name,
+                        &editor_version,
+                    )?;
                 }
             }
             _ => {}
@@ -137,13 +114,4 @@ pub async fn run(config: &mut Config) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn chrono_now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    format!("{}", secs)
 }

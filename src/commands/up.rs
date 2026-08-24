@@ -125,18 +125,6 @@ fn zip_dir(dir: &Path, zip_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn snake_case(s: &str) -> String {
-    s.chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c.to_ascii_lowercase()
-            } else {
-                '_'
-            }
-        })
-        .collect()
-}
-
 fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
@@ -276,7 +264,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
 
     let project_name =
         project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
-    let project_snake = snake_case(&project_name);
+    let project_snake = super::shared::snake_case(&project_name);
 
     // Determine channel names for each platform
     let mut channels: HashMap<String, String> = HashMap::new();
@@ -316,16 +304,16 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         let output_file = if let Some(ref export_path) = preset.export_path {
             cwd.join(export_path)
         } else if preset_platform == "web" {
-            let preset_snake = snake_case(&preset.name);
+            let preset_snake = super::shared::snake_case(&preset.name);
             output_dir.join(&preset_snake).join("index.html")
         } else if preset_platform == "linux" {
-            let preset_snake = snake_case(&preset.name);
+            let preset_snake = super::shared::snake_case(&preset.name);
             let arch = preset.binary_format.as_deref().unwrap_or("x86_64");
             output_dir
                 .join(&preset_snake)
                 .join(format!("{}.{}", project_snake, arch))
         } else {
-            let preset_snake = snake_case(&preset.name);
+            let preset_snake = super::shared::snake_case(&preset.name);
             let ext = match preset_platform.as_str() {
                 "windows" => ".exe",
                 "macos" => ".app",

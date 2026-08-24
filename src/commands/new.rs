@@ -85,32 +85,7 @@ pub async fn run(name: &str, config: &mut Config) -> Result<()> {
         .with_context(|| format!("Failed to create directory: {}", project_dir.display()))?;
 
     // Select editor and open
-    let editors: Vec<_> = config.editors.values().cloned().collect();
-    let mut options: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
-    options.push("[add editor]".to_string());
-
-    let idx = dialoguer::FuzzySelect::new()
-        .with_prompt("Open with editor")
-        .items(&options)
-        .default(0)
-        .interact()?;
-
-    let editor = if options[idx] == "[add editor]" {
-        let version: String = dialoguer::Input::new()
-            .with_prompt("Editor version (e.g. 4.7, 4.8-beta, or path to executable)")
-            .interact_text()?;
-
-        let csharp = dialoguer::Confirm::new()
-            .with_prompt("C# support?")
-            .default(false)
-            .interact()?;
-
-        crate::commands::add::run(&version, None, csharp, config)
-            .await?
-            .context("Editor was not added")?
-    } else {
-        editors[idx].clone()
-    };
+    let editor = super::shared::resolve_editor(config, None).await?;
 
     // Create project.godot with version from selected editor
     let (engine_version, _) = crate::config::parse_version_flavor(&editor.version);
@@ -150,15 +125,7 @@ renderer/rendering_method.mobile="{}"
     godot::open_project_editor_mode(&editor.path, &project_file)?;
 
     // Register project
-    let now = crate::commands::default::chrono_now();
-    let project_info = crate::config::ProjectInfo {
-        path: project_dir,
-        name: name.to_string(),
-        bound_editor: Some(editor.version),
-        last_opened: Some(now),
-    };
-    config.register_project(&project_info);
-    config.save()?;
+    super::shared::register_opened_project(config, project_dir, name.to_string(), &editor.version)?;
 
     Ok(())
 }

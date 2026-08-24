@@ -1,8 +1,7 @@
 use crate::config::{self, Config};
 use crate::godot;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use console::Style;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn run(config: &mut Config) -> Result<()> {
     if config.projects.is_empty() {
@@ -11,21 +10,7 @@ pub async fn run(config: &mut Config) -> Result<()> {
         return Ok(());
     }
 
-    let mut removed_count = 0u32;
-    let paths_to_check: Vec<String> = config.projects.keys().cloned().collect();
-    for path in paths_to_check {
-        let project_file = std::path::Path::new(&path).join("project.godot");
-        if !project_file.exists()
-            && let Some(p) = config.remove_project(&path)
-        {
-            println!("Removed missing project: {} ({})", p.name, path);
-            removed_count += 1;
-        }
-    }
-    if removed_count > 0 {
-        config.save()?;
-        println!();
-    }
+    super::shared::cleanup_missing_projects(config)?;
 
     if config.projects.is_empty() {
         println!("No projects registered.");
@@ -89,49 +74,7 @@ pub async fn run(config: &mut Config) -> Result<()> {
         anyhow::bail!("Project file not found: {}", project_file.display());
     }
 
-    let mut editor = project
-        .bound_editor
-        .as_ref()
-        .and_then(|v| config.find_editor_for_version(v))
-        .cloned();
-
-    if let Some(ref e) = editor
-        && !e.path.exists()
-    {
-        println!("Editor binary not found: {}", e.path.display());
-        editor = None;
-    }
-
-    let editor = match editor {
-        Some(e) => e,
-        None => {
-            let mut options: Vec<String> =
-                config.editors.values().map(|e| e.name.clone()).collect();
-            options.push("[add editor]".to_string());
-
-            let idx = dialoguer::FuzzySelect::new()
-                .with_prompt("Select editor")
-                .items(&options)
-                .default(0)
-                .interact()?;
-
-            if options[idx] == "[add editor]" {
-                let version: String = dialoguer::Input::new()
-                    .with_prompt("Editor version (e.g. 4.7, 4.7-stable, or path)")
-                    .interact_text()?;
-                let csharp = dialoguer::Confirm::new()
-                    .with_prompt("C# support?")
-                    .default(false)
-                    .interact()?;
-                crate::commands::add::run(&version, None, csharp, config)
-                    .await?
-                    .context("Editor was not added")?
-            } else {
-                let editors: Vec<_> = config.editors.values().cloned().collect();
-                editors[idx].clone()
-            }
-        }
-    };
+    let editor = super::shared::resolve_editor(config, project.bound_editor.as_deref()).await?;
 
     if is_game {
         println!("Opening {} in game mode...", project.name);
@@ -141,19 +84,6 @@ pub async fn run(config: &mut Config) -> Result<()> {
         godot::open_project_editor_mode(&editor.path, &project_file)?;
     }
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        .to_string();
-
-    let project_info = crate::config::ProjectInfo {
-        path: project.path,
-        name: project.name,
-        bound_editor: Some(editor.version.clone()),
-        last_opened: Some(now),
-    };
-    config.register_project(&project_info);
-    config.save()?;
+    super::shared::register_opened_project(config, project.path, project.name, &editor.version)?;
     Ok(())
 }

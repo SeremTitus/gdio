@@ -10,6 +10,7 @@ pub mod new;
 pub mod projects;
 pub mod recent;
 pub mod remove;
+pub mod shared;
 pub mod templates;
 pub mod test;
 pub mod uninstall;
