@@ -60,7 +60,8 @@ fn run_setup(config: &mut Config) -> Result<()> {
     println!("=== itch.io upload setup ===\n");
 
     let default_butler = config
-        .get_itch_config()
+        .itch
+        .as_ref()
         .map(|itch| itch.butler_path.clone())
         .or_else(detect_butler)
         .unwrap_or_else(|| "butler".to_string());
@@ -96,7 +97,7 @@ fn run_setup(config: &mut Config) -> Result<()> {
 
     let project_path = cwd.to_string_lossy().to_string();
 
-    config.set_itch_project(&project_path, crate::config::ItchProjectConfig { game });
+    itch_config.set_project(&project_path, crate::config::ItchProjectConfig { game });
     config.save()?;
 
     println!("\n✓ itch.io upload configured for this project.");
@@ -134,11 +135,12 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
     }
 
     let itch = config
-        .get_itch_config()
+        .itch
+        .as_ref()
         .context("No itch.io configuration found. Run 'gdio up --setup' first.")?;
 
     let project_path = cwd.to_string_lossy().to_string();
-    let itch_project = config.get_itch_project(&project_path).context(
+    let itch_project = itch.get_project(&project_path).context(
         "This project is not configured for itch.io upload. Run 'gdio up --setup' first.",
     )?;
 
