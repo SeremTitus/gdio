@@ -24,3 +24,6 @@ pub mod sync;
 
 /// `gdio addons repository` — manage third-party addon repositories.
 pub mod repository;
+
+/// `gdio addons search` — search the asset store by name/description.
+pub mod search;

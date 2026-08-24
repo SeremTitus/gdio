@@ -212,6 +212,8 @@ gdio addons remove                            # interactive: select addon to rem
 gdio addons remove ruzta                      # remove addon by folder name
 gdio addons remove seremtitus/ruzta           # remove by identifier (also cleans .gdio tracking)
 
+gdio addons search "2d platformer"             # search the asset store by name/description
+
 gdio addons repository                        # list registered repositories
 gdio addons repository https://example.com    # toggle add/remove a repository
 ```

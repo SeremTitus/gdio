@@ -238,6 +238,12 @@ enum AddonsAction {
         /// Repository URL (omit to list, provide to toggle add/remove)
         url: Option<String>,
     },
+
+    /// Search the asset store by name/description
+    Search {
+        /// Search query
+        query: String,
+    },
 }
 
 #[tokio::main]
@@ -365,6 +371,9 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Some(AddonsAction::Repository { url }) => {
                     commands::addons::repository::run(&mut config, url.as_deref())?;
+                }
+                Some(AddonsAction::Search { query }) => {
+                    commands::addons::search::run(&query, &config).await?;
                 }
             },
             Commands::Templates { action } => match action {
