@@ -6,6 +6,13 @@ use std::path::{Path, PathBuf};
 
 const GITHUB_API: &str = "https://api.github.com/repos/godotengine/godot-builds/releases";
 
+fn github_client() -> Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .user_agent("gdio")
+        .build()
+        .context("Failed to build HTTP client")
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct GitHubRelease {
     #[allow(dead_code)]
@@ -59,7 +66,7 @@ pub async fn fetch_release(version: &str, stage: &str) -> Result<GitHubRelease> 
     let tag = format!("{}-{}", version, stage);
     let url = format!("{}/tags/{}", GITHUB_API, tag);
 
-    let client = reqwest::Client::builder().user_agent("gdio").build()?;
+    let client = github_client()?;
 
     let resp = client
         .get(&url)
@@ -80,7 +87,7 @@ pub async fn fetch_release_auto(version: &str) -> Result<(GitHubRelease, String)
         return Ok((release, "stable".to_string()));
     }
 
-    let client = reqwest::Client::builder().user_agent("gdio").build()?;
+    let client = github_client()?;
 
     let url = format!("{}?per_page=100", GITHUB_API);
     let resp = client
@@ -237,7 +244,7 @@ pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
 }
 
 pub async fn download_file(url: &str, dest: &Path) -> Result<()> {
-    let client = reqwest::Client::builder().user_agent("gdio").build()?;
+    let client = github_client()?;
 
     let resp = client
         .get(url)
