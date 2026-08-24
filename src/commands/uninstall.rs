@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::Config;
 
-const UNINSTALL_ART: &str = include_str!("../../assets/gdio_ascii_art.txt");
+const UNINSTALL_ART: &str = include_str!("../../gdio_ascii_art.txt");
 
 pub fn run(keep: bool) -> Result<()> {
     let config_dir = Config::config_dir();
