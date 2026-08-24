@@ -1,4 +1,5 @@
 use crate::config::{Config, EditorInfo};
+use crate::project;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -90,6 +91,42 @@ pub fn cleanup_missing_projects(config: &mut Config) -> Result<bool> {
         println!();
     }
     Ok(removed_count > 0)
+}
+
+pub fn compute_export_output_path(
+    cwd: &Path,
+    output_dir: &Path,
+    project_snake: &str,
+    preset_platform: &str,
+    preset: &project::ExportPreset,
+) -> PathBuf {
+    if let Some(ref export_path) = preset.export_path {
+        cwd.join(export_path)
+    } else {
+        let preset_snake = snake_case(&preset.name);
+        match preset_platform {
+            "web" => output_dir.join(&preset_snake).join("index.html"),
+            "linux" => {
+                let arch = preset.binary_format.as_deref().unwrap_or("x86_64");
+                output_dir
+                    .join(&preset_snake)
+                    .join(format!("{}.{}", project_snake, arch))
+            }
+            _ => {
+                let ext = match preset_platform {
+                    "windows" => ".exe",
+                    "macos" => ".app",
+                    "ios" => ".ipa",
+                    "visionos" => ".ipa",
+                    "android" => ".apk",
+                    _ => "",
+                };
+                output_dir
+                    .join(&preset_snake)
+                    .join(format!("{}{}", project_snake, ext))
+            }
+        }
+    }
 }
 
 pub fn snake_case(s: &str) -> String {

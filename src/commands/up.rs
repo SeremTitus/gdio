@@ -285,31 +285,13 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
     for (preset_platform, preset) in &selected_presets {
         println!("Exporting preset: {} ({})", preset.name, preset_platform);
 
-        let output_file = if let Some(ref export_path) = preset.export_path {
-            cwd.join(export_path)
-        } else if preset_platform == "web" {
-            let preset_snake = super::shared::snake_case(&preset.name);
-            output_dir.join(&preset_snake).join("index.html")
-        } else if preset_platform == "linux" {
-            let preset_snake = super::shared::snake_case(&preset.name);
-            let arch = preset.binary_format.as_deref().unwrap_or("x86_64");
-            output_dir
-                .join(&preset_snake)
-                .join(format!("{}.{}", project_snake, arch))
-        } else {
-            let preset_snake = super::shared::snake_case(&preset.name);
-            let ext = match preset_platform.as_str() {
-                "windows" => ".exe",
-                "macos" => ".app",
-                "ios" => ".ipa",
-                "visionos" => ".ipa",
-                "android" => ".apk",
-                _ => "",
-            };
-            output_dir
-                .join(&preset_snake)
-                .join(format!("{}{}", project_snake, ext))
-        };
+        let output_file = super::shared::compute_export_output_path(
+            &cwd,
+            &output_dir,
+            &project_snake,
+            preset_platform,
+            preset,
+        );
 
         if let Some(parent) = output_file.parent() {
             std::fs::create_dir_all(parent)?;
