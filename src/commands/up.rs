@@ -238,28 +238,10 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
             blue.apply_to("Project Settings: application/config/version is not set.")
         );
         let input: String = dialoguer::Input::new()
-            .with_prompt("Set game version")
+            .with_prompt("Game version for upload")
             .default("0.1.0-dev".to_string())
             .interact_text()?;
-        let version = input.trim().trim_start_matches('v').to_string();
-        if !version.is_empty() {
-            let content = std::fs::read_to_string(&project_file)?;
-            let new_line = format!("config/version=\"{}\"", version);
-            let mut lines: Vec<String> = content.lines().map(ToString::to_string).collect();
-            let mut found = false;
-            for line in &mut lines {
-                if line.trim().starts_with("config/version=") {
-                    line.clone_from(&new_line);
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                lines.push(new_line);
-            }
-            std::fs::write(&project_file, lines.join("\n"))?;
-        }
-        version
+        input.trim().trim_start_matches('v').to_string()
     } else {
         game_version
     };
