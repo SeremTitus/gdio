@@ -269,13 +269,13 @@ async fn try_download(
     );
     pb.set_message(format!("Downloading {}", filename));
 
-    let mut file = std::fs::File::create(dest_path)?;
+    let mut file = tokio::fs::File::create(dest_path).await?;
     let mut stream = resp.bytes_stream();
     let mut downloaded: u64 = 0;
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Failed to read chunk")?;
-        std::io::Write::write_all(&mut file, &chunk)?;
+        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
         downloaded += chunk.len() as u64;
         pb.set_position(downloaded);
     }
