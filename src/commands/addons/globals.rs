@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 /// * `remove` - If true, remove a global addon (interactive if no identifier)
 /// * `select` - If true, interactively select which version to install
 /// * `linked` - If true, store in global cache and symlink into projects
-pub fn run(
+pub async fn run(
     config: &mut Config,
     identifier: Option<&str>,
     remove: bool,
@@ -24,7 +24,7 @@ pub fn run(
     }
 
     if let Some(ident) = identifier {
-        return run_add(config, ident, select, linked);
+        return run_add(config, ident, select, linked).await;
     }
 
     // List global addons
@@ -59,7 +59,7 @@ pub fn run(
 }
 
 /// Add an addon as a global addon (synced to all projects).
-fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) -> Result<()> {
+async fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let in_project = cwd.join("project.godot").exists();
 
@@ -110,13 +110,12 @@ fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) ->
     }
 
     // 3. Fetch from API to verify addon exists and get version(s)
-    let rt = tokio::runtime::Runtime::new()?;
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     // Collect all releases from all repositories (no compatibility filter)
     let mut all_releases: Vec<(String, String, api::Release)> = Vec::new();
     for repo in &config.addons.repositories {
-        match rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset)) {
+        match api::fetch_releases(&client, &repo.url, publisher, asset).await {
             Ok(releases) => {
                 for r in &releases {
                     all_releases.push((repo.name.clone(), repo.url.clone(), r.clone()));
@@ -184,7 +183,7 @@ fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) ->
 
     // Sync to current project if we're in one
     if in_project {
-        super::sync::run(config, &cwd, &rt)?;
+        super::sync::run(config, &cwd).await?;
     } else {
         println!("  (will sync to projects during `gdio addons sync`)");
     }

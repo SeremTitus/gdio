@@ -13,7 +13,7 @@ use anyhow::{Context, Result};
 /// # Installation modes
 /// - **Local** (default): Extract to `{project}/addons/`
 /// - **Linked** (`--linked`): Extract to global store, symlink into project, update .gdio
-pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) -> Result<()> {
+pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) -> Result<()> {
     // Parse the identifier into publisher/asset components
     let (publisher, asset) = parse_identifier(identifier)?;
 
@@ -41,7 +41,6 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
     println!("Fetching releases for {}...", identifier);
 
     // Set up async runtime and HTTP client
-    let rt = tokio::runtime::Runtime::new()?;
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     // Collect all compatible releases from all repositories
@@ -49,7 +48,7 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
     let mut not_found = false;
 
     for repo in &config.addons.repositories {
-        match rt.block_on(api::fetch_releases(&client, &repo.url, publisher, asset)) {
+        match api::fetch_releases(&client, &repo.url, publisher, asset).await {
             Ok(releases) => {
                 let compatible = api::list_compatible_releases(&releases, &godot_version);
                 for r in compatible {
@@ -185,12 +184,7 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
             let cache_dir = Config::get_addons_cache_dir();
             let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version);
             println!("Downloading {} v{}...", identifier, version);
-            let zip_path = rt.block_on(api::download_zip(
-                &client,
-                &download_url,
-                &cache_dir,
-                &zip_name,
-            ))?;
+            let zip_path = api::download_zip(&client, &download_url, &cache_dir, &zip_name).await?;
             println!("Extracting to global store...");
             let name = storage::extract_addon(&zip_path, &addon_global_dir, true)?;
             let _ = std::fs::remove_file(&zip_path);
@@ -243,12 +237,7 @@ pub fn run(config: &mut Config, identifier: &str, linked: bool, select: bool) ->
             let cache_dir = Config::get_addons_cache_dir();
             let zip_name = format!("{}_v{}.zip", identifier.replace('/', "_"), version);
             println!("Downloading {} v{}...", identifier, version);
-            let zip_path = rt.block_on(api::download_zip(
-                &client,
-                &download_url,
-                &cache_dir,
-                &zip_name,
-            ))?;
+            let zip_path = api::download_zip(&client, &download_url, &cache_dir, &zip_name).await?;
             println!("Extracting to project...");
             let name = storage::extract_addon(&zip_path, &cwd, false)?;
             let _ = std::fs::remove_file(&zip_path);

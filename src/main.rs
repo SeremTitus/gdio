@@ -122,7 +122,7 @@ enum Commands {
         #[arg(short, long)]
         visual: bool,
 
-        /// Test folder (relative path, e.g. "test" → res://test/)
+        /// Test folder (relative path, e.g. "test" -> res://test/)
         folder: Option<String>,
     },
 
@@ -240,7 +240,8 @@ enum AddonsAction {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     if cli.version {
@@ -256,14 +257,14 @@ fn main() -> anyhow::Result<()> {
     let mut config = config::Config::load()?;
 
     if cli.recent {
-        commands::recent::run(&mut config)?;
+        commands::recent::run(&mut config).await?;
         return Ok(());
     }
 
     match cli.command {
         None => {
             // No subcommand - detect and open project
-            commands::default::run(&mut config)?;
+            commands::default::run(&mut config).await?;
         }
         Some(cmd) => match cmd {
             Commands::Add {
@@ -271,7 +272,7 @@ fn main() -> anyhow::Result<()> {
                 path,
                 csharp,
             } => {
-                commands::add::run(&target, path.as_deref(), csharp, &mut config)?;
+                commands::add::run(&target, path.as_deref(), csharp, &mut config).await?;
             }
             Commands::List => {
                 commands::list::run(&config)?;
@@ -280,22 +281,22 @@ fn main() -> anyhow::Result<()> {
                 commands::remove::run(target.as_deref(), &mut config)?;
             }
             Commands::Bind { target } => {
-                commands::bind::run(target.as_deref(), &mut config)?;
+                commands::bind::run(target.as_deref(), &mut config).await?;
             }
             Commands::Game => {
                 commands::game::run(&config)?;
             }
             Commands::Recent => {
-                commands::recent::run(&mut config)?;
+                commands::recent::run(&mut config).await?;
             }
             Commands::Projects => {
-                commands::projects::run(&mut config)?;
+                commands::projects::run(&mut config).await?;
             }
             Commands::New { name } => {
-                commands::new::run(&name, &mut config)?;
+                commands::new::run(&name, &mut config).await?;
             }
             Commands::Build { platform, debug } => {
-                commands::build::run(&platform, debug, &config)?;
+                commands::build::run(&platform, debug, &config).await?;
             }
             Commands::Up {
                 setup,
@@ -316,7 +317,7 @@ fn main() -> anyhow::Result<()> {
                 visual,
                 folder,
             } => {
-                commands::test::run(init, visual, folder.as_deref(), &mut config)?;
+                commands::test::run(init, visual, folder.as_deref(), &mut config).await?;
             }
             Commands::Addons { action } => match action {
                 None => {
@@ -331,7 +332,7 @@ fn main() -> anyhow::Result<()> {
                     select,
                 }) => {
                     let identifier = identifier.to_lowercase();
-                    commands::addons::add::run(&mut config, &identifier, linked, select)?;
+                    commands::addons::add::run(&mut config, &identifier, linked, select).await?;
                 }
                 Some(AddonsAction::Remove { identifiers }) => {
                     let identifiers: Vec<String> =
@@ -351,7 +352,8 @@ fn main() -> anyhow::Result<()> {
                         remove,
                         select,
                         linked,
-                    )?;
+                    )
+                    .await?;
                 }
                 Some(AddonsAction::Exclude { identifier, revert }) => {
                     let identifier = identifier.map(|s| s.to_lowercase());
@@ -359,8 +361,7 @@ fn main() -> anyhow::Result<()> {
                 }
                 Some(AddonsAction::Sync) => {
                     let cwd = std::env::current_dir()?;
-                    let rt = tokio::runtime::Runtime::new()?;
-                    commands::addons::sync::run(&mut config, &cwd, &rt)?;
+                    commands::addons::sync::run(&mut config, &cwd).await?;
                 }
                 Some(AddonsAction::Repository { url }) => {
                     commands::addons::repository::run(&mut config, url.as_deref())?;
@@ -374,7 +375,7 @@ fn main() -> anyhow::Result<()> {
                     godot_version,
                     platform,
                 }) => {
-                    commands::templates::add::run(&godot_version, &platform, &mut config)?;
+                    commands::templates::add::run(&godot_version, &platform, &mut config).await?;
                 }
                 Some(TemplatesAction::Remove {
                     godot_version,

@@ -113,7 +113,7 @@ async fn download_modern_templates(
     Ok(())
 }
 
-pub fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Result<()> {
+pub async fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
 
     // Check if this is a pre-4.x version (full .tpz download)
@@ -173,8 +173,6 @@ pub fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Res
 
     std::fs::create_dir_all(&godot_dir)?;
 
-    let rt = tokio::runtime::Runtime::new()?;
-
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
     if is_legacy {
@@ -184,16 +182,10 @@ pub fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Res
             base_version, flavor
         );
         println!("Using URL: {}", tpz_url);
-        rt.block_on(api::download_full_tpz(&client, &tpz_url, &godot_dir))?;
+        api::download_full_tpz(&client, &tpz_url, &godot_dir).await?;
     } else {
         // 4.x+: download individual files via mirror
-        rt.block_on(download_modern_templates(
-            &client,
-            base_version,
-            flavor,
-            &to_download,
-            &godot_dir,
-        ))?;
+        download_modern_templates(&client, base_version, flavor, &to_download, &godot_dir).await?;
     }
 
     println!("\nTemplates installed to: {}", godot_dir.display());

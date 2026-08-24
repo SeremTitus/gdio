@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use console::Style;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn run(config: &mut Config) -> Result<()> {
+pub async fn run(config: &mut Config) -> Result<()> {
     if config.projects.is_empty() {
         println!("No projects registered.");
         println!("Use `gdio` in a project directory to register it.");
@@ -123,7 +123,8 @@ pub fn run(config: &mut Config) -> Result<()> {
                     .with_prompt("C# support?")
                     .default(false)
                     .interact()?;
-                crate::commands::add::run(&version, None, csharp, config)?
+                crate::commands::add::run(&version, None, csharp, config)
+                    .await?
                     .context("Editor was not added")?
             } else {
                 let editors: Vec<_> = config.editors.values().cloned().collect();

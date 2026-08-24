@@ -364,13 +364,11 @@ fn find_executable_in_dir_recursive(dir: &Path, candidates: &mut Vec<PathBuf>) -
         let entry = entry?;
         let path = entry.path();
         if path.is_dir() {
-            if cfg!(target_os = "macos") {
-                if path.extension().is_some_and(|e| e == "app") {
-                    let macos_bin = path.join("Contents").join("MacOS").join("Godot");
-                    if macos_bin.exists() {
-                        candidates.push(macos_bin);
-                        return Ok(());
-                    }
+            if cfg!(target_os = "macos") && path.extension().is_some_and(|e| e == "app") {
+                let macos_bin = path.join("Contents").join("MacOS").join("Godot");
+                if macos_bin.exists() {
+                    candidates.push(macos_bin);
+                    return Ok(());
                 }
             }
             find_executable_in_dir_recursive(&path, candidates)?;

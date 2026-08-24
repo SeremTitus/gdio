@@ -1,9 +1,14 @@
 use crate::config::Config;
 use anyhow::{Context, Result};
 
-pub fn run(init: bool, visual: bool, folder: Option<&str>, config: &mut Config) -> Result<()> {
+pub async fn run(
+    init: bool,
+    visual: bool,
+    folder: Option<&str>,
+    config: &mut Config,
+) -> Result<()> {
     if init {
-        return run_init(config);
+        return run_init(config).await;
     }
 
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
@@ -68,7 +73,7 @@ pub fn run(init: bool, visual: bool, folder: Option<&str>, config: &mut Config) 
     Ok(())
 }
 
-fn run_init(_config: &mut Config) -> Result<()> {
+async fn run_init(_config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
@@ -84,15 +89,15 @@ fn run_init(_config: &mut Config) -> Result<()> {
 
     println!("Fetching GUT releases...");
 
-    let rt = tokio::runtime::Runtime::new()?;
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
 
-    let releases = rt.block_on(crate::commands::addons::api::fetch_releases(
+    let releases = crate::commands::addons::api::fetch_releases(
         &client,
         "https://store.godotengine.org",
         "bitwes",
         "gut",
-    ))?;
+    )
+    .await?;
 
     let release = releases
         .iter()
@@ -121,12 +126,13 @@ fn run_init(_config: &mut Config) -> Result<()> {
     let zip_name = format!("bitwes_gut_v{}.zip", release.version);
 
     println!("Downloading GUT v{}...", release.version);
-    let zip_path = rt.block_on(crate::commands::addons::api::download_zip(
+    let zip_path = crate::commands::addons::api::download_zip(
         &client,
         &release.download_url,
         &cache_dir,
         &zip_name,
-    ))?;
+    )
+    .await?;
 
     println!("Installing to project...");
     let folder_name = crate::commands::addons::storage::extract_addon(&zip_path, &cwd, false)?;

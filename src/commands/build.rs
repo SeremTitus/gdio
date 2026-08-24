@@ -4,7 +4,7 @@ use crate::project;
 use anyhow::{Context, Result};
 use console::Style;
 
-pub fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()> {
+pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
@@ -86,7 +86,7 @@ pub fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()>
             continue;
         }
 
-        ensure_templates(&godot_version, preset_platform)?;
+        ensure_templates(&godot_version, preset_platform).await?;
     }
 
     let mut output_paths = Vec::new();
@@ -182,7 +182,7 @@ pub fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()>
     Ok(())
 }
 
-fn ensure_templates(version: &str, platform: &str) -> Result<()> {
+async fn ensure_templates(version: &str, platform: &str) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
     let godot_dir = Config::get_godot_templates_dir().join(format!("{}.{}", base_version, flavor));
 
@@ -205,14 +205,14 @@ fn ensure_templates(version: &str, platform: &str) -> Result<()> {
     if download {
         std::fs::create_dir_all(&godot_dir)?;
         // Use templates add instead
-        let rt = tokio::runtime::Runtime::new()?;
         let client = reqwest::Client::builder().user_agent("gdio").build()?;
-        rt.block_on(crate::commands::templates::api::download_template_files(
+        crate::commands::templates::api::download_template_files(
             &client,
             version,
             platform,
             godot_dir.as_path(),
-        ))?;
+        )
+        .await?;
     }
 
     Ok(())

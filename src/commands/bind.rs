@@ -3,7 +3,7 @@ use crate::project;
 use anyhow::{Context, Result};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
+pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
     let project_file = cwd.join("project.godot");
 
@@ -30,15 +30,10 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
                 // Editor not found - add it first
                 println!("Editor '{}' not found, downloading...", name);
                 let (ver, stage) = crate::commands::add::parse_version_arg(name);
-                let rt = tokio::runtime::Runtime::new()?;
                 if let Some(stage) = stage {
-                    rt.block_on(crate::commands::add::download_version(
-                        &ver, &stage, false, config,
-                    ))?;
+                    crate::commands::add::download_version(&ver, &stage, false, config).await?;
                 } else {
-                    rt.block_on(crate::commands::add::download_version_auto(
-                        &ver, false, config,
-                    ))?;
+                    crate::commands::add::download_version_auto(&ver, false, config).await?;
                 }
                 // Find the editor we just added
                 config

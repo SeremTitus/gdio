@@ -5,7 +5,7 @@ use console::Style;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub fn run(
+pub async fn run(
     version: &str,
     path: Option<&str>,
     csharp: bool,
@@ -20,11 +20,10 @@ pub fn run(
     }
 
     let (ver, stage) = parse_version_arg(version);
-    let rt = tokio::runtime::Runtime::new()?;
     if let Some(stage) = stage {
-        rt.block_on(download_version(&ver, &stage, csharp, config))
+        download_version(&ver, &stage, csharp, config).await
     } else {
-        rt.block_on(download_version_auto(&ver, csharp, config))
+        download_version_auto(&ver, csharp, config).await
     }
 }
 
@@ -49,15 +48,15 @@ fn register_downloaded_editor(
     csharp: bool,
     config: &mut Config,
 ) -> Result<Option<EditorInfo>> {
-    if let Some(existing) = config.find_editor_for_version(version_key) {
-        if existing.is_mono == csharp {
-            println!(
-                "Already exists: {} ({})",
-                existing.name,
-                existing.path.display()
-            );
-            return Ok(None);
-        }
+    if let Some(existing) = config.find_editor_for_version(version_key)
+        && existing.is_mono == csharp
+    {
+        println!(
+            "Already exists: {} ({})",
+            existing.name,
+            existing.path.display()
+        );
+        return Ok(None);
     }
 
     let editor_name = if csharp {
@@ -99,15 +98,15 @@ pub async fn download_version(
     // Check if executable already exists on disk
     if let Ok(exe_path) = github::find_executable_in_dir(&dest_dir) {
         println!("Already exists: {}", exe_path.display());
-        if let Some(existing) = config.find_editor_for_version(&version_key) {
-            if existing.is_mono == csharp {
-                println!(
-                    "Already registered: {} ({})",
-                    existing.name,
-                    existing.path.display()
-                );
-                return Ok(None);
-            }
+        if let Some(existing) = config.find_editor_for_version(&version_key)
+            && existing.is_mono == csharp
+        {
+            println!(
+                "Already registered: {} ({})",
+                existing.name,
+                existing.path.display()
+            );
+            return Ok(None);
         }
         return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
     }
@@ -140,15 +139,15 @@ pub async fn download_version_auto(
             Ok((_, stage)) => stage,
             Err(_) => {
                 // API failed — try to find an already-registered editor for this version prefix
-                if let Some(existing) = config.find_editor_for_version(version) {
-                    if existing.is_mono == csharp {
-                        println!(
-                            "Already registered: {} ({})",
-                            existing.name,
-                            existing.path.display()
-                        );
-                        return Ok(None);
-                    }
+                if let Some(existing) = config.find_editor_for_version(version)
+                    && existing.is_mono == csharp
+                {
+                    println!(
+                        "Already registered: {} ({})",
+                        existing.name,
+                        existing.path.display()
+                    );
+                    return Ok(None);
                 }
                 // API unavailable and no registered editor — default to "stable"
                 eprintln!(
@@ -160,15 +159,15 @@ pub async fn download_version_auto(
         };
         let version_key = format!("{}-{}", version, stage);
         // Try to find and register if not in config
-        if let Some(existing) = config.find_editor_for_version(&version_key) {
-            if existing.is_mono == csharp {
-                println!(
-                    "Already registered: {} ({})",
-                    existing.name,
-                    existing.path.display()
-                );
-                return Ok(None);
-            }
+        if let Some(existing) = config.find_editor_for_version(&version_key)
+            && existing.is_mono == csharp
+        {
+            println!(
+                "Already registered: {} ({})",
+                existing.name,
+                existing.path.display()
+            );
+            return Ok(None);
         }
         // Register existing executable
         return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
@@ -195,10 +194,7 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
             if output.status.success() {
                 Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
             } else {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "process exited with non-zero status",
-                ))
+                Err(std::io::Error::other("process exited with non-zero status"))
             }
         })
         .map_err(|e| anyhow::anyhow!("Failed to run `{} --version`: {}", path.display(), e))?;

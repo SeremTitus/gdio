@@ -54,7 +54,7 @@ impl fmt::Display for Renderer {
     }
 }
 
-pub fn run(name: &str, config: &mut Config) -> Result<()> {
+pub async fn run(name: &str, config: &mut Config) -> Result<()> {
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
     if cwd.join("project.godot").exists() {
@@ -105,7 +105,8 @@ pub fn run(name: &str, config: &mut Config) -> Result<()> {
             .default(false)
             .interact()?;
 
-        crate::commands::add::run(&version, None, csharp, config)?
+        crate::commands::add::run(&version, None, csharp, config)
+            .await?
             .context("Editor was not added")?
     } else {
         editors[idx].clone()
