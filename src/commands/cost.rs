@@ -6,21 +6,13 @@ fn dir_size(path: &std::path::Path) -> u64 {
     if !path.exists() {
         return 0;
     }
-    let mut total = 0;
-    if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let metadata = match entry.metadata() {
-                Ok(m) => m,
-                Err(_) => continue,
-            };
-            if metadata.is_dir() {
-                total += dir_size(&entry.path());
-            } else {
-                total += metadata.len();
-            }
-        }
-    }
-    total
+    walkdir::WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter_map(|e| e.metadata().ok())
+        .filter(|m| m.is_file())
+        .map(|m| m.len())
+        .sum()
 }
 
 fn format_size(bytes: u64) -> String {
