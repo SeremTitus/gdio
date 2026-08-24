@@ -93,7 +93,8 @@ pub fn cleanup_missing_projects(config: &mut Config) -> Result<bool> {
 }
 
 pub fn snake_case(s: &str) -> String {
-    s.chars()
+    let raw: String = s
+        .chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() {
                 c.to_ascii_lowercase()
@@ -101,5 +102,19 @@ pub fn snake_case(s: &str) -> String {
                 '_'
             }
         })
-        .collect()
+        .collect();
+    let mut result = String::new();
+    let mut prev_underscore = false;
+    for c in raw.chars() {
+        if c == '_' {
+            if !prev_underscore && !result.is_empty() {
+                result.push(c);
+            }
+            prev_underscore = true;
+        } else {
+            result.push(c);
+            prev_underscore = false;
+        }
+    }
+    result.trim_end_matches('_').to_string()
 }
