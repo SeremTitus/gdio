@@ -7,6 +7,83 @@ mod project;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use platform::PlatformFlags;
+use std::path::{Path, PathBuf};
+
+fn detect_shell() -> clap_complete::Shell {
+    // On all platforms, $SHELL is the most reliable indicator
+    if let Ok(shell) = std::env::var("SHELL") {
+        let shell_name = Path::new(&shell)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+        match shell_name {
+            "zsh" => return clap_complete::Shell::Zsh,
+            "fish" => return clap_complete::Shell::Fish,
+            "bash" | "sh" => return clap_complete::Shell::Bash,
+            _ => {}
+        }
+    }
+
+    if cfg!(windows) {
+        clap_complete::Shell::PowerShell
+    } else {
+        clap_complete::Shell::Bash
+    }
+}
+
+fn completions_install_path(shell: clap_complete::Shell) -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+
+    match shell {
+        clap_complete::Shell::Bash => {
+            if cfg!(target_os = "macos") {
+                // Try Homebrew path first
+                if let Ok(output) = std::process::Command::new("brew").arg("--prefix").output() {
+                    if output.status.success() {
+                        let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        let path = PathBuf::from(format!("{prefix}/etc/bash_completion.d/gdio"));
+                        return Some(path);
+                    }
+                }
+                Some(home.join(".local/share/bash-completion/completions/gdio"))
+            } else {
+                // Linux / other Unix
+                if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+                    Some(PathBuf::from(format!("{xdg}/bash-completion/completions/gdio")))
+                } else {
+                    Some(home.join(".local/share/bash-completion/completions/gdio"))
+                }
+            }
+        }
+        clap_complete::Shell::Zsh => {
+            if let Ok(zdotdir) = std::env::var("ZDOTDIR") {
+                Some(PathBuf::from(format!("{zdotdir}/.zsh/completions/_gdio")))
+            } else {
+                Some(home.join(".zsh/completions/_gdio"))
+            }
+        }
+        clap_complete::Shell::Fish => {
+            if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+                Some(PathBuf::from(format!("{xdg}/fish/completions/gdio.fish")))
+            } else {
+                Some(home.join(".config/fish/completions/gdio.fish"))
+            }
+        }
+        clap_complete::Shell::PowerShell => {
+            if cfg!(windows) {
+                Some(home.join("Documents/PowerShell/Modules/gdio/gdio.psm1"))
+            } else {
+                // Linux/macOS PowerShell Core
+                if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+                    Some(PathBuf::from(format!("{xdg}/powershell/Modules/gdio/gdio.psm1")))
+                } else {
+                    Some(home.join(".config/powershell/Modules/gdio/gdio.psm1"))
+                }
+            }
+        }
+        _ => None,
+    }
+}
 
 #[derive(Parser)]
 #[command(
@@ -138,10 +215,14 @@ enum Commands {
         action: Option<TemplatesAction>,
     },
 
-    /// Generate shell completions
+    /// Generate and install shell completions
     Completions {
-        /// Shell to generate completions for
-        shell: clap_complete::Shell,
+        /// Shell to generate completions for (auto-detected if omitted with --install)
+        shell: Option<clap_complete::Shell>,
+
+        /// Install completions to the appropriate shell config directory
+        #[arg(short, long)]
+        install: bool,
     },
 }
 
@@ -255,8 +336,26 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    if let Some(Commands::Completions { shell }) = cli.command {
-        clap_complete::generate(shell, &mut Cli::command(), "gdio", &mut std::io::stdout());
+    if let Some(Commands::Completions { shell, install }) = cli.command {
+        let shell = shell.unwrap_or_else(detect_shell);
+
+        if install {
+            let path = completions_install_path(shell).ok_or_else(|| {
+                anyhow::anyhow!("unsupported shell for auto-install: {shell}")
+            })?;
+
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            let mut file = std::fs::File::create(&path)?;
+            clap_complete::generate(shell, &mut Cli::command(), "gdio", &mut file);
+
+            println!("Installed {shell} completions to {}", path.display());
+        } else {
+            clap_complete::generate(shell, &mut Cli::command(), "gdio", &mut std::io::stdout());
+        }
+
         return Ok(());
     }
 

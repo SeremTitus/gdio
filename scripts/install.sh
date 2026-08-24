@@ -169,6 +169,13 @@ else
     info "Already in PATH"
 fi
 
+# Install shell completions
+if "$INSTALL_DIR/$binary_name" completions --install 2>/dev/null; then
+    info "Shell completions installed"
+else
+    warn "Could not install shell completions (non-critical)"
+fi
+
 echo ""
 
 # Print centered ASCII art

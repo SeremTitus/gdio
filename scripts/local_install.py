@@ -60,6 +60,13 @@ def main() -> None:
     else:
         print("[OK] Already in PATH")
 
+    # Install shell completions
+    result = subprocess.run([str(dest), "completions", "--install"], capture_output=True)
+    if result.returncode == 0:
+        print("[OK] Shell completions installed")
+    else:
+        print("[!] Could not install shell completions (non-critical)")
+
     print(f"\n[OK] Done! Run '{APP} --help' to get started.")
 
 
