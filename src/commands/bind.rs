@@ -1,18 +1,8 @@
 use crate::config::Config;
-use crate::project;
 use anyhow::{Context, Result};
 
 pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
-
-    if !project_file.exists() {
-        anyhow::bail!("No Godot project found in current directory.");
-    }
-
-    let project_path = cwd.to_string_lossy().to_string();
-    let project_name =
-        project::parse_project_name(&project_file).unwrap_or_else(|| "Unknown Project".to_string());
+    let ctx = super::shared::ProjectContext::detect("Unknown Project")?;
 
     let selected_editor = match target {
         Some(name) => {
@@ -52,7 +42,7 @@ pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
                 return Ok(());
             }
 
-            println!("Project: {}", project_name);
+            println!("Project: {}", ctx.project_name);
 
             let editors: Vec<_> = config.editors.values().cloned().collect();
             let names: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
@@ -67,9 +57,14 @@ pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
         }
     };
 
-    config.update_project_editor(&project_path, &selected_editor.version);
+    config.update_project_editor(&ctx.project_path, &selected_editor.version);
 
-    super::shared::register_opened_project(config, cwd, project_name, &selected_editor.version)?;
+    super::shared::register_opened_project(
+        config,
+        ctx.cwd,
+        ctx.project_name,
+        &selected_editor.version,
+    )?;
 
     println!("Bound project to: {}", selected_editor.name);
     Ok(())

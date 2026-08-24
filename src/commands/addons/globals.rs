@@ -1,6 +1,6 @@
 use super::{api, storage};
 use crate::config::{Config, GlobalAddonEntry};
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 /// Manages global addons that are synced to all projects unless excluded.
 ///
@@ -60,8 +60,8 @@ pub async fn run(
 
 /// Add an addon as a global addon (synced to all projects).
 async fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bool) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let in_project = cwd.join("project.godot").exists();
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project").ok();
+    let in_project = ctx.as_ref().is_some_and(|c| c.project_file.exists());
 
     // Check if already registered as global
     if config.addons.globals.contains_key(identifier) {
@@ -81,21 +81,24 @@ async fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bo
     let mut repository = String::new();
 
     // 1. Try local files (if in project and addon exists locally)
-    if in_project && let Some(name) = storage::find_local_addon_folder(&cwd, asset) {
-        let addons_dir = cwd.join("addons");
-        let plugin_cfg = addons_dir.join(&name).join("plugin.cfg");
-        version = if plugin_cfg.exists() {
-            parse_plugin_version(&plugin_cfg).unwrap_or_default()
-        } else {
-            String::new()
-        };
-        let gdio = storage::read_gdio(&cwd);
-        repository = gdio
-            .addons
-            .get(identifier)
-            .map(|e| e.repository.clone())
-            .unwrap_or_default();
-        folder_name = Some(name);
+    if in_project {
+        let cwd = &ctx.as_ref().unwrap().cwd;
+        if let Some(name) = storage::find_local_addon_folder(cwd, asset) {
+            let addons_dir = cwd.join("addons");
+            let plugin_cfg = addons_dir.join(&name).join("plugin.cfg");
+            version = if plugin_cfg.exists() {
+                parse_plugin_version(&plugin_cfg).unwrap_or_default()
+            } else {
+                String::new()
+            };
+            let gdio = storage::read_gdio(cwd);
+            repository = gdio
+                .addons
+                .get(identifier)
+                .map(|e| e.repository.clone())
+                .unwrap_or_default();
+            folder_name = Some(name);
+        }
     }
 
     // 2. Try linked config / global store
@@ -183,7 +186,8 @@ async fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bo
 
     // Sync to current project if we're in one
     if in_project {
-        super::sync::run(config, &cwd).await?;
+        let cwd = &ctx.as_ref().unwrap().cwd;
+        super::sync::run(config, cwd).await?;
     } else {
         println!("  (will sync to projects during `gdio addons sync`)");
     }

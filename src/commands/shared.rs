@@ -4,6 +4,49 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub struct ProjectContext {
+    pub cwd: PathBuf,
+    pub project_file: PathBuf,
+    pub project_path: String,
+    pub project_name: String,
+}
+
+impl ProjectContext {
+    pub fn detect(default_name: &str) -> Result<Self> {
+        let cwd = std::env::current_dir().context("Failed to get current directory")?;
+        let project_file = cwd.join("project.godot");
+        if !project_file.exists() {
+            anyhow::bail!("No Godot project found in current directory.");
+        }
+        let project_path = cwd.to_string_lossy().to_string();
+        let project_name =
+            project::parse_project_name(&project_file).unwrap_or_else(|| default_name.to_string());
+        Ok(Self {
+            cwd,
+            project_file,
+            project_path,
+            project_name,
+        })
+    }
+
+    pub fn bound_editor<'a>(&self, config: &'a Config) -> Option<&'a EditorInfo> {
+        config
+            .projects
+            .get(&self.project_path)
+            .and_then(|p| p.bound_editor.as_deref())
+            .and_then(|v| config.find_editor_for_version(v))
+    }
+
+    pub fn find_editor_for_detected_version<'a>(
+        &self,
+        config: &'a Config,
+    ) -> Option<(String, &'a EditorInfo)> {
+        let version = project::parse_godot_version(&self.project_file)?;
+        let editor = config.find_editor_for_version(&version)?;
+        Some((version, editor))
+    }
+}
+
 pub fn chrono_now() -> String {
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)

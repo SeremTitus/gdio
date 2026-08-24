@@ -1,7 +1,7 @@
 use super::api;
 use super::storage;
 use crate::config::{Config, LinkedAddonInfo};
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 /// Downloads and installs an addon from a Godot Asset Store repository.
 ///
@@ -17,16 +17,10 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
     // Parse the identifier into publisher/asset components
     let (publisher, asset) = parse_identifier(identifier)?;
 
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-
-    // Validate we're in a Godot project directory
-    let project_file = cwd.join("project.godot");
-    if !project_file.exists() {
-        anyhow::bail!("Not in a Godot project directory.");
-    }
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project")?;
 
     // Get the bound Godot version for compatibility filtering
-    let project_key = cwd.to_string_lossy().to_string();
+    let project_key = ctx.project_path.clone();
     let godot_version = match config
         .projects
         .get(&project_key)
@@ -113,19 +107,19 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
     };
 
     // Detect current installation mode and handle switching
-    let gdio = storage::read_gdio(&cwd);
+    let gdio = storage::read_gdio(&ctx.cwd);
     let currently_linked = gdio.addons.contains_key(identifier);
     let current_folder = config
         .addons
         .linked
         .get(identifier)
         .map(|g| g.folder_name.clone())
-        .or_else(|| storage::find_local_addon_folder(&cwd, asset));
+        .or_else(|| storage::find_local_addon_folder(&ctx.cwd, asset));
 
     if currently_linked && !linked {
         // Switching linked → local: remove the symlink
         if let Some(ref folder) = current_folder {
-            let symlink_path = cwd.join("addons").join(folder);
+            let symlink_path = ctx.cwd.join("addons").join(folder);
             if symlink_path.exists() {
                 storage::remove_symlink(&symlink_path)?;
                 println!("Removed linked symlink: {}", folder);
@@ -133,7 +127,7 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
         }
         // Remove from .gdio and .gitignore
         if let Some(ref folder) = current_folder {
-            storage::remove_linked(&cwd, identifier, folder)?;
+            storage::remove_linked(&ctx.cwd, identifier, folder)?;
         }
         // Remove project from linked reference list
         let should_remove_entry = if let Some(info) = config.addons.linked.get_mut(identifier) {
@@ -153,7 +147,7 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
     } else if !currently_linked && linked && current_folder.is_some() {
         // Switching local → linked: remove the local directory
         if let Some(ref folder) = current_folder {
-            let local_path = cwd.join("addons").join(folder);
+            let local_path = ctx.cwd.join("addons").join(folder);
             if local_path.exists() && !storage::is_symlink(&local_path) {
                 std::fs::remove_dir_all(&local_path)?;
                 println!("Removed local install: {}", folder);
@@ -192,17 +186,17 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
         };
 
         // Create the addons/ directory and symlink
-        let project_addons = cwd.join("addons").join(&folder_name);
-        std::fs::create_dir_all(cwd.join("addons"))?;
+        let project_addons = ctx.cwd.join("addons").join(&folder_name);
+        std::fs::create_dir_all(ctx.cwd.join("addons"))?;
 
         // Create symlink: {project}/addons/{folder_name} -> {global_store}/{publisher}_{asset}_{version}/{folder_name}
         storage::create_symlink(&addon_global_dir.join(&folder_name), &project_addons)?;
 
         // Update .gdio and .gitignore
-        storage::add_linked(&cwd, identifier, &version, &used_repo, &folder_name)?;
+        storage::add_linked(&ctx.cwd, identifier, &version, &used_repo, &folder_name)?;
 
         // Register in the linked config for cross-project awareness
-        let project_key = cwd.to_string_lossy().to_string();
+        let project_key = ctx.cwd.to_string_lossy().to_string();
         let entry = config
             .addons
             .linked
@@ -219,7 +213,7 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
         entry.folder_name = folder_name.clone();
 
         println!("Installed {} v{} (linked)", identifier, version);
-        storage::enable_plugin(&cwd, &folder_name)?;
+        storage::enable_plugin(&ctx.cwd, &folder_name)?;
     } else {
         // --- LOCAL INSTALL ---
         let folder_name = if cached {
@@ -227,7 +221,7 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
             println!("Using cached {} v{} ({})", identifier, version, name);
             // Copy from global store to project
             let src = addon_global_dir.join(&name);
-            let dst = cwd.join("addons").join(&name);
+            let dst = ctx.cwd.join("addons").join(&name);
             if !dst.exists() {
                 std::fs::create_dir_all(dst.parent().unwrap())?;
                 storage::copy_dir_all(&src, &dst)?;
@@ -239,13 +233,13 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
             println!("Downloading {} v{}...", identifier, version);
             let zip_path = api::download_zip(&client, &download_url, &cache_dir, &zip_name).await?;
             println!("Extracting to project...");
-            let name = storage::extract_addon(&zip_path, &cwd, false)?;
+            let name = storage::extract_addon(&zip_path, &ctx.cwd, false)?;
             let _ = std::fs::remove_file(&zip_path);
             name
         };
 
         println!("Installed {} v{} as {}", identifier, version, folder_name);
-        storage::enable_plugin(&cwd, &folder_name)?;
+        storage::enable_plugin(&ctx.cwd, &folder_name)?;
     }
 
     // Persist config changes

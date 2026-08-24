@@ -1,6 +1,6 @@
 use super::storage;
 use crate::config::Config;
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 /// Manages project exclusions for global addons.
 ///
@@ -8,14 +8,7 @@ use anyhow::{Context, Result};
 /// * `identifier` - Addon identifier to exclude (or revert exclusion for)
 /// * `revert` - If true, revert the exclusion (re-add this project to sync list)
 pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
-
-    if !project_file.exists() {
-        anyhow::bail!("Not in a Godot project directory.");
-    }
-
-    let project_path = cwd.to_string_lossy().to_string();
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project")?;
 
     if revert {
         // Revert exclusion: remove project from the exclusion list and re-add addon
@@ -23,11 +16,11 @@ pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Resul
             Some(id) => id.to_string(),
             None => {
                 // Interactive: select from excluded addons
-                return run_revert_interactive(config, &project_path);
+                return run_revert_interactive(config, &ctx.project_path);
             }
         };
 
-        return revert_exclusion(config, &ident, &project_path, &cwd);
+        return revert_exclusion(config, &ident, &ctx.project_path, &ctx.cwd);
     }
 
     // Exclude: add project to the exclusion list and remove addon from project
@@ -35,7 +28,7 @@ pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Resul
         Some(id) => id.to_string(),
         None => {
             // Interactive: select from global addons
-            return run_exclude_interactive(config, &project_path);
+            return run_exclude_interactive(config, &ctx.project_path);
         }
     };
 
@@ -49,18 +42,18 @@ pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Resul
         .entry(ident.clone())
         .or_default();
 
-    if exclusions.contains(&project_path) {
-        println!("{} is already excluded for {}", project_path, ident);
+    if exclusions.contains(&ctx.project_path) {
+        println!("{} is already excluded for {}", ctx.project_path, ident);
         return Ok(());
     }
 
-    exclusions.push(project_path.clone());
-    println!("Excluded {} from {}", project_path, ident);
+    exclusions.push(ctx.project_path.clone());
+    println!("Excluded {} from {}", ctx.project_path, ident);
 
     // Remove the addon from the project
     if let Some(global_info) = config.addons.globals.get(&ident) {
         let folder_name = &global_info.folder_name;
-        let addon_path = cwd.join("addons").join(folder_name);
+        let addon_path = ctx.cwd.join("addons").join(folder_name);
 
         if addon_path.exists() || addon_path.symlink_metadata().is_ok() {
             let is_link = storage::is_symlink(&addon_path);
@@ -73,7 +66,7 @@ pub fn run(config: &mut Config, identifier: Option<&str>, revert: bool) -> Resul
             }
 
             // Clean up .gitignore
-            crate::commands::addons::storage::remove_linked(&cwd, "", folder_name)?;
+            crate::commands::addons::storage::remove_linked(&ctx.cwd, "", folder_name)?;
         }
     }
 
@@ -195,10 +188,10 @@ fn run_exclude_interactive(config: &mut Config, project_path: &str) -> Result<()
     println!("Excluded {} from {}", project_path, identifier);
 
     // Remove the addon from the project (same as non-interactive path)
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project")?;
     if let Some(global_info) = config.addons.globals.get(&identifier) {
         let folder_name = &global_info.folder_name;
-        let addon_path = cwd.join("addons").join(folder_name);
+        let addon_path = ctx.cwd.join("addons").join(folder_name);
 
         if addon_path.exists() || addon_path.symlink_metadata().is_ok() {
             let is_link = storage::is_symlink(&addon_path);
@@ -210,7 +203,7 @@ fn run_exclude_interactive(config: &mut Config, project_path: &str) -> Result<()
                 println!("  removed: {}", folder_name);
             }
 
-            crate::commands::addons::storage::remove_linked(&cwd, "", folder_name)?;
+            crate::commands::addons::storage::remove_linked(&ctx.cwd, "", folder_name)?;
         }
     }
 
@@ -220,7 +213,7 @@ fn run_exclude_interactive(config: &mut Config, project_path: &str) -> Result<()
 
 /// Interactive selection to revert an exclusion.
 fn run_revert_interactive(config: &mut Config, project_path: &str) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project")?;
 
     let excluded: Vec<(String, String)> = config
         .addons
@@ -255,5 +248,5 @@ fn run_revert_interactive(config: &mut Config, project_path: &str) -> Result<()>
         .interact()?;
 
     let identifier = &excluded[idx].0;
-    revert_exclusion(config, identifier, project_path, &cwd)
+    revert_exclusion(config, identifier, project_path, &ctx.cwd)
 }

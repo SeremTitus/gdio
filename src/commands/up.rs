@@ -48,14 +48,7 @@ pub fn run(
 }
 
 fn run_setup(config: &mut Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
-
-    if !project_file.exists() {
-        anyhow::bail!(
-            "No Godot project found in current directory. Run this command from a directory containing a project.godot file."
-        );
-    }
+    let ctx = super::shared::ProjectContext::detect("game")?;
 
     println!("=== itch.io upload setup ===\n");
 
@@ -95,9 +88,7 @@ fn run_setup(config: &mut Config) -> Result<()> {
     let itch_config = config.get_or_default_itch();
     itch_config.butler_path = butler_path;
 
-    let project_path = cwd.to_string_lossy().to_string();
-
-    itch_config.set_project(&project_path, crate::config::ItchProjectConfig { game });
+    itch_config.set_project(&ctx.project_path, crate::config::ItchProjectConfig { game });
     config.save()?;
 
     println!("\n✓ itch.io upload configured for this project.");
@@ -127,20 +118,14 @@ fn zip_dir(dir: &Path, zip_path: &Path) -> Result<()> {
 }
 
 fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
-
-    if !project_file.exists() {
-        anyhow::bail!("No Godot project found in current directory.");
-    }
+    let ctx = super::shared::ProjectContext::detect("game")?;
 
     let itch = config
         .itch
         .as_ref()
         .context("No itch.io configuration found. Run 'gdio up --setup' first.")?;
 
-    let project_path = cwd.to_string_lossy().to_string();
-    let itch_project = itch.get_project(&project_path).context(
+    let itch_project = itch.get_project(&ctx.project_path).context(
         "This project is not configured for itch.io upload. Run 'gdio up --setup' first.",
     )?;
 
@@ -148,7 +133,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
     let game = &itch_project.game;
 
     // Parse presets to determine platforms
-    let presets_file = cwd.join("export_presets.cfg");
+    let presets_file = ctx.cwd.join("export_presets.cfg");
     if !presets_file.exists() {
         anyhow::bail!(
             "No export_presets.cfg found. Create export presets in the Godot editor first."
@@ -206,31 +191,16 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
     }
 
     // Export
-    let editor = if let Some(editor_version) = config
-        .projects
-        .get(&project_path)
-        .and_then(|p| p.bound_editor.as_ref())
-    {
-        config
-            .find_editor_for_version(editor_version)
-            .cloned()
-            .context(format!(
-                "Bound editor '{}' not found. Use `gdio bind` to rebind.",
-                editor_version
-            ))?
-    } else if let Some(version) = project::parse_godot_version(&project_file) {
-        config
-            .find_editor_for_version(&version)
-            .cloned()
-            .context(format!(
-                "No editor bound and no editor found for Godot {}. Use `gdio bind` to bind one.",
-                version
-            ))?
+    let editor = if let Some(editor) = ctx.bound_editor(config) {
+        editor.clone()
+    } else if let Some((version, editor)) = ctx.find_editor_for_detected_version(config) {
+        println!("Detected Godot version: {}", version);
+        editor.clone()
     } else {
         anyhow::bail!("No editor bound to this project. Use `gdio bind` to bind one.");
     };
 
-    let game_version = project::parse_game_version(&project_file);
+    let game_version = project::parse_game_version(&ctx.project_file);
     let game_version_display = if game_version.is_empty() {
         let blue = Style::new().blue();
         println!(
@@ -246,9 +216,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         game_version
     };
 
-    let project_name =
-        project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
-    let project_snake = super::shared::snake_case(&project_name);
+    let project_snake = super::shared::snake_case(&ctx.project_name);
 
     // Determine channel names for each platform
     let mut channels: HashMap<String, String> = HashMap::new();
@@ -276,7 +244,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
 
     println!("Building project for upload...\n");
 
-    let output_dir = cwd.join("export");
+    let output_dir = ctx.cwd.join("export");
     std::fs::create_dir_all(&output_dir)?;
 
     // Track exported paths per platform for zipping
@@ -286,7 +254,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         println!("Exporting preset: {} ({})", preset.name, preset_platform);
 
         let output_file = super::shared::compute_export_output_path(
-            &cwd,
+            &ctx.cwd,
             &output_dir,
             &project_snake,
             preset_platform,
@@ -301,7 +269,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
 
         if let Err(e) = crate::godot::open_headless_export(
             &editor.path,
-            &project_file,
+            &ctx.project_file,
             &preset.name,
             &output_file,
             debug,
@@ -329,7 +297,10 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         ))?;
 
         let parent_dir = export_path.parent().unwrap_or(&output_dir);
-        let zip_name = format!("{}-{}-v{}", project_name, platform, game_version_display);
+        let zip_name = format!(
+            "{}-{}-v{}",
+            ctx.project_name, platform, game_version_display
+        );
         let zip_path = temp_dir.join(format!("{}.zip", zip_name));
 
         println!("  Zipping {}...", parent_dir.display());

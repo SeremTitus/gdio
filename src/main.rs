@@ -366,8 +366,8 @@ async fn main() -> anyhow::Result<()> {
                     commands::addons::exclude::run(&mut config, identifier.as_deref(), revert)?;
                 }
                 Some(AddonsAction::Sync) => {
-                    let cwd = std::env::current_dir()?;
-                    commands::addons::sync::run(&mut config, &cwd).await?;
+                    let ctx = commands::shared::ProjectContext::detect("Unknown Project")?;
+                    commands::addons::sync::run(&mut config, &ctx.cwd).await?;
                 }
                 Some(AddonsAction::Repository { url }) => {
                     commands::addons::repository::run(&mut config, url.as_deref())?;

@@ -11,24 +11,15 @@ pub async fn run(
         return run_init(config).await;
     }
 
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
+    let ctx = super::shared::ProjectContext::detect("Unknown Project")?;
 
-    if !project_file.exists() {
-        anyhow::bail!("No Godot project found in current directory.");
-    }
-
-    let gut_script = cwd.join("addons").join("gut").join("gut_cmdln.gd");
+    let gut_script = ctx.cwd.join("addons").join("gut").join("gut_cmdln.gd");
     if !gut_script.exists() {
         anyhow::bail!("GUT not found. Install it with `gdio test --init`.");
     }
 
-    let project_path = cwd.to_string_lossy().to_string();
-    let editor = config
-        .projects
-        .get(&project_path)
-        .and_then(|p| p.bound_editor.as_ref())
-        .and_then(|v| config.find_editor_for_version(v))
+    let editor = ctx
+        .bound_editor(config)
         .context("No editor bound to this project. Use `gdio bind` to bind one.")?
         .clone();
 
@@ -39,7 +30,7 @@ pub async fn run(
     }
 
     args.push("--path".to_string());
-    args.push(cwd.to_string_lossy().to_string());
+    args.push(ctx.cwd.to_string_lossy().to_string());
     args.push("-s".to_string());
     args.push("addons/gut/gut_cmdln.gd".to_string());
 
@@ -48,7 +39,7 @@ pub async fn run(
             let f = f.trim_start_matches('/').trim_start_matches('\\');
             args.push(format!("-gdir=res://{}", f));
         }
-        None if !cwd.join(".gutconfig.json").exists() => {
+        None if !ctx.cwd.join(".gutconfig.json").exists() => {
             args.push("-gdir=res://".to_string());
             args.push("-ginclude_subdirs".to_string());
         }
@@ -74,14 +65,9 @@ pub async fn run(
 }
 
 async fn run_init(_config: &mut Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
+    let ctx = super::shared::ProjectContext::detect("Unknown Project")?;
 
-    if !project_file.exists() {
-        anyhow::bail!("Not in a Godot project directory.");
-    }
-
-    let gut_script = cwd.join("addons").join("gut").join("gut_cmdln.gd");
+    let gut_script = ctx.cwd.join("addons").join("gut").join("gut_cmdln.gd");
     if gut_script.exists() {
         println!("GUT is already installed.");
         return Ok(());
@@ -135,10 +121,10 @@ async fn run_init(_config: &mut Config) -> Result<()> {
     .await?;
 
     println!("Installing to project...");
-    let folder_name = crate::commands::addons::storage::extract_addon(&zip_path, &cwd, false)?;
+    let folder_name = crate::commands::addons::storage::extract_addon(&zip_path, &ctx.cwd, false)?;
     let _ = std::fs::remove_file(&zip_path);
 
-    crate::commands::addons::storage::enable_plugin(&cwd, &folder_name)?;
+    crate::commands::addons::storage::enable_plugin(&ctx.cwd, &folder_name)?;
 
     println!("Installed GUT v{} as {}", release.version, folder_name);
     Ok(())

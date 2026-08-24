@@ -5,14 +5,9 @@ use anyhow::{Context, Result};
 use console::Style;
 
 pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
+    let ctx = super::shared::ProjectContext::detect("game")?;
 
-    if !project_file.exists() {
-        anyhow::bail!("No Godot project found in current directory.");
-    }
-
-    let presets_file = cwd.join("export_presets.cfg");
+    let presets_file = ctx.cwd.join("export_presets.cfg");
     if !presets_file.exists() {
         anyhow::bail!(
             "No export_presets.cfg found. Create export presets in the Godot editor first."
@@ -46,14 +41,11 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
         detected
     };
 
-    let project_path = cwd.to_string_lossy().to_string();
-    let project_name =
-        project::parse_project_name(&project_file).unwrap_or_else(|| "game".to_string());
-    let project_snake = super::shared::snake_case(&project_name);
+    let project_snake = super::shared::snake_case(&ctx.project_name);
 
     let editor_version = config
         .projects
-        .get(&project_path)
+        .get(&ctx.project_path)
         .and_then(|p| p.bound_editor.clone())
         .context("No editor bound to this project. Use `gdio bind` to bind one.")?;
     let editor = config
@@ -81,7 +73,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
     }
 
     let mut output_paths = Vec::new();
-    let output_dir = cwd.join("export");
+    let output_dir = ctx.cwd.join("export");
 
     for preset in &presets {
         let preset_platform = match project::godot_platform_to_gdio(&preset.platform) {
@@ -106,7 +98,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
         println!("Exporting preset: {} ({})", preset.name, preset_platform);
 
         let output_file = super::shared::compute_export_output_path(
-            &cwd,
+            &ctx.cwd,
             &output_dir,
             &project_snake,
             preset_platform,
@@ -121,7 +113,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
 
         if let Err(e) = crate::godot::open_headless_export(
             &editor.path,
-            &project_file,
+            &ctx.project_file,
             &preset.name,
             &output_file,
             debug,

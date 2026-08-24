@@ -16,8 +16,15 @@ pub fn run(config: &Config, linked: bool) -> Result<()> {
 
 /// List addons installed in the current project's `addons/` directory.
 fn run_list_local() -> Result<()> {
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let addons_dir = cwd.join("addons");
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project").ok();
+    let cwd = ctx.as_ref().map(|c| &c.cwd);
+    let addons_dir = match cwd {
+        Some(cwd) => cwd.join("addons"),
+        None => {
+            println!("No addons directory found.");
+            return Ok(());
+        }
+    };
 
     if !addons_dir.exists() {
         println!("No addons directory found.");

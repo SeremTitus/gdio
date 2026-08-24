@@ -15,20 +15,15 @@ use anyhow::{Context, Result};
 /// - Use `gdio addons exclude` to manage every-project exclusions
 pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
     // Validate we're in a Godot project directory
-    let cwd = std::env::current_dir().context("Failed to get current directory")?;
-    let project_file = cwd.join("project.godot");
+    let ctx = crate::commands::shared::ProjectContext::detect("Unknown Project")?;
 
-    if !project_file.exists() {
-        anyhow::bail!("Not in a Godot project directory.");
-    }
-
-    let addons_dir = cwd.join("addons");
+    let addons_dir = ctx.cwd.join("addons");
     if !addons_dir.exists() {
         println!("No addons directory found.");
         return Ok(());
     }
 
-    let project_key = cwd.to_string_lossy().to_string();
+    let project_key = ctx.project_path;
 
     // If no identifiers provided, do interactive selection
     let inputs: Vec<String> = if identifiers.is_empty() {
@@ -104,12 +99,12 @@ pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
         // If identifier was provided, handle config tracking
         if let Some(ident) = identifier {
             // Remove from .gdio and .gitignore
-            storage::remove_linked(&cwd, ident, &folder_name)?;
+            storage::remove_linked(&ctx.cwd, ident, &folder_name)?;
             // Remove project from linked reference list
             remove_project_reference(config, ident, &project_key);
         } else {
             // Plain folder name — try to find matching entries in .gdio
-            let gdio = storage::read_gdio(&cwd);
+            let gdio = storage::read_gdio(&ctx.cwd);
             let matched_ident = gdio
                 .addons
                 .keys()
@@ -126,11 +121,11 @@ pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
                 .cloned();
 
             if let Some(ident) = matched_ident {
-                storage::remove_linked(&cwd, &ident, &folder_name)?;
+                storage::remove_linked(&ctx.cwd, &ident, &folder_name)?;
                 remove_project_reference(config, &ident, &project_key);
             } else {
                 // No matching identifier in .gdio, just clean up .gitignore
-                storage::remove_linked(&cwd, "", &folder_name)?;
+                storage::remove_linked(&ctx.cwd, "", &folder_name)?;
             }
         }
     }
