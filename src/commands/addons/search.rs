@@ -1,8 +1,8 @@
 use crate::config::Config;
 use anyhow::{Context, Result};
+use crossterm::cursor::Show;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::execute;
-use crossterm::cursor::Show;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
@@ -194,7 +194,7 @@ impl Drop for CleanupGuard {
 }
 
 pub async fn run(query: &str, config: &Config) -> Result<()> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
     let repos = &config.addons.repositories;
 
     if repos.is_empty() {
