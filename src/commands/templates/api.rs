@@ -15,6 +15,9 @@ const ZIP64_EXTRA_BUFFER: u64 = 256;
 // Concurrency limit for parallel downloads
 const DOWNLOAD_CONCURRENCY: usize = 5;
 
+// Max retries per file before accepting failure
+const MAX_RETRIES: u32 = 3;
+
 pub fn progress_style_file() -> ProgressStyle {
     ProgressStyle::default_bar()
         .template("  {msg} [{elapsed_precise}] [{bar:30.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec})")
@@ -102,9 +105,24 @@ pub async fn download_files_concurrent(
             let mp = mp.clone();
             let client = client.clone();
             async move {
-                let result =
-                    download_file_from_mirror(&client, &url, &filename, &dest, Some(&mp)).await;
-                (filename, result)
+                let mut last_err = None;
+                for attempt in 1..=MAX_RETRIES {
+                    match download_file_from_mirror(&client, &url, &filename, &dest, Some(&mp))
+                        .await
+                    {
+                        Ok(result) => return (filename, Ok(result)),
+                        Err(e) => {
+                            last_err = Some(e);
+                            if attempt < MAX_RETRIES {
+                                let _ = mp.println(format!(
+                                    "  ⚠ {}: attempt {}/{} failed, retrying...",
+                                    filename, attempt, MAX_RETRIES
+                                ));
+                            }
+                        }
+                    }
+                }
+                (filename, Err(last_err.unwrap()))
             }
         })
         .collect();

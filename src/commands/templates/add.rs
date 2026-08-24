@@ -145,7 +145,7 @@ pub fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Res
         let mut exist = Vec::new();
         for platform in &platforms {
             let files = github::platform_template_files(platform);
-            if files.iter().any(|f| installed.contains(*f)) {
+            if files.iter().all(|f| installed.contains(*f)) {
                 exist.push(platform.as_ref());
             }
         }
