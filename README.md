@@ -16,13 +16,13 @@ python scripts\local_install.py
 
 ## Latest Release Installation
 
-### PowerShell (Windows)
+### Windows
 
 ```powershell
-powershell -c "irm https://gdio.seremtitus.co.ke/install.ps1 | iex"
+curl.exe -fsSL https://gdio.seremtitus.co.ke/install.ps1 | powershell -Command -
 ```
 
-### Curl (Linux / macOS / Windows)
+### Linux / macOS
 
 ```bash
 curl -fsSL https://gdio.seremtitus.co.ke/install.sh | bash
