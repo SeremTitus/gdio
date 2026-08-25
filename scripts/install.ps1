@@ -1,7 +1,10 @@
 # gdio installer for Windows
-# Usage: powershell -c "irm https://gdio.seremtitus.co.ke/install.ps1 | iex"
+# Usage: curl.exe -fsSL https://gdio.seremtitus.co.ke/install.ps1 | powershell -Command -
 
 $ErrorActionPreference = "Stop"
+
+# Ensure TLS 1.2 for GitHub/HTTPS requests
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 $GITHUB_REPO = "SeremTitus/gdio"
 $INSTALL_DIR = if ($env:GDIO_INSTALL_DIR) { $env:GDIO_INSTALL_DIR } else { "$env:LOCALAPPDATA\gdio\bin" }
