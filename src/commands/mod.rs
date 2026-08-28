@@ -10,6 +10,7 @@ pub mod list;
 pub mod new;
 pub mod projects;
 pub mod recent;
+pub mod recovery;
 pub mod remove;
 pub mod shared;
 pub mod templates;
