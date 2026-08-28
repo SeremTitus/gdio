@@ -112,12 +112,16 @@ fn remove_completions() {
         if let Ok(output) = std::process::Command::new("brew").arg("--prefix").output() {
             if output.status.success() {
                 let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                bash_paths.push(PathBuf::from(format!("{prefix}/etc/bash_completion.d/gdio")));
+                bash_paths.push(PathBuf::from(format!(
+                    "{prefix}/etc/bash_completion.d/gdio"
+                )));
             }
         }
     }
     if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
-        bash_paths.push(PathBuf::from(format!("{xdg}/bash-completion/completions/gdio")));
+        bash_paths.push(PathBuf::from(format!(
+            "{xdg}/bash-completion/completions/gdio"
+        )));
     }
     for path in &bash_paths {
         if path.exists() && fs::remove_file(path).is_ok() {

@@ -50,7 +50,9 @@ fn completions_install_path(shell: clap_complete::Shell) -> Option<PathBuf> {
             } else {
                 // Linux / other Unix
                 if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
-                    Some(PathBuf::from(format!("{xdg}/bash-completion/completions/gdio")))
+                    Some(PathBuf::from(format!(
+                        "{xdg}/bash-completion/completions/gdio"
+                    )))
                 } else {
                     Some(home.join(".local/share/bash-completion/completions/gdio"))
                 }
@@ -76,7 +78,9 @@ fn completions_install_path(shell: clap_complete::Shell) -> Option<PathBuf> {
             } else {
                 // Linux/macOS PowerShell Core
                 if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
-                    Some(PathBuf::from(format!("{xdg}/powershell/Modules/gdio/gdio.psm1")))
+                    Some(PathBuf::from(format!(
+                        "{xdg}/powershell/Modules/gdio/gdio.psm1"
+                    )))
                 } else {
                     Some(home.join(".config/powershell/Modules/gdio/gdio.psm1"))
                 }
@@ -360,9 +364,8 @@ async fn main() -> anyhow::Result<()> {
         let shell = shell.unwrap_or_else(detect_shell);
 
         if install {
-            let path = completions_install_path(shell).ok_or_else(|| {
-                anyhow::anyhow!("unsupported shell for auto-install: {shell}")
-            })?;
+            let path = completions_install_path(shell)
+                .ok_or_else(|| anyhow::anyhow!("unsupported shell for auto-install: {shell}"))?;
 
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;

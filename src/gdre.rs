@@ -3,9 +3,10 @@ use anyhow::{Context, Result};
 use futures_util::stream::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const GDRE_API: &str = "https://api.github.com/repos/GDRETools/gdsdecomp/releases/latest";
+const CHECK_INTERVAL_SECONDS: u64 = 24 * 60 * 60; // 24 hours
 
 #[derive(Debug, Deserialize)]
 struct GhRelease {
@@ -53,7 +54,9 @@ async fn fetch_latest_release() -> Result<GhRelease> {
         );
     }
 
-    resp.json().await.context("Failed to parse GDRE Tools release info")
+    resp.json()
+        .await
+        .context("Failed to parse GDRE Tools release info")
 }
 
 fn find_platform_asset<'a>(release: &'a GhRelease) -> Option<&'a GhAsset> {
@@ -145,7 +148,7 @@ fn extract_zip(zip_path: &Path, dest_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn ensure_gdre_tools(config: &mut Config) -> Result<String> {
+pub async fn ensure_gdre_tools(config: &mut Config) -> Result<PathBuf> {
     let tools_dir = Config::get_gdre_tools_dir();
     let exe_name = if cfg!(target_os = "windows") {
         "gdre_tools.exe"
@@ -155,6 +158,20 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<String> {
         "gdre_tools"
     };
     let exe_path = tools_dir.join(exe_name);
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let check_cached = config
+        .gdre_tools_last_checked
+        .map(|ts| now.saturating_sub(ts) < CHECK_INTERVAL_SECONDS)
+        .unwrap_or(false);
+
+    if exe_path.exists() && config.gdre_tools_version.is_some() && check_cached {
+        return Ok(exe_path);
+    }
 
     match fetch_latest_release().await {
         Ok(release) => {
@@ -187,10 +204,17 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<String> {
 
                 #[cfg(target_os = "linux")]
                 {
-                    let x86_64 = tools_dir.join("gdre_tools.x86_64");
-                    if x86_64.exists() {
-                        let target = tools_dir.join("gdre_tools");
-                        let _ = std::fs::rename(&x86_64, &target);
+                    let target = tools_dir.join("gdre_tools");
+                    if !target.exists() {
+                        let arch_name = if cfg!(target_arch = "aarch64") {
+                            "gdre_tools.aarch64"
+                        } else {
+                            "gdre_tools.x86_64"
+                        };
+                        let arch_path = tools_dir.join(arch_name);
+                        if arch_path.exists() {
+                            let _ = std::fs::rename(&arch_path, &target);
+                        }
                     }
                 }
 
@@ -222,13 +246,19 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<String> {
                 }
 
                 config.gdre_tools_version = Some(latest_version.clone());
+                config.gdre_tools_last_checked = Some(now);
                 config.save()?;
 
                 println!("GDRE Tools v{} installed.\n", latest_version);
+            } else {
+                config.gdre_tools_last_checked = Some(now);
+                let _ = config.save();
             }
         }
         Err(_) if exe_path.exists() => {
-            // Offline or API error — use existing binary
+            eprintln!("Warning: Could not check for GDRE Tools updates, using installed version.");
+            config.gdre_tools_last_checked = Some(now);
+            let _ = config.save();
         }
         Err(e) => {
             anyhow::bail!(
@@ -238,5 +268,5 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<String> {
         }
     }
 
-    Ok(exe_path.to_string_lossy().to_string())
+    Ok(exe_path)
 }

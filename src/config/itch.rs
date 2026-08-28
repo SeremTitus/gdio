@@ -10,6 +10,8 @@ pub struct ItchProjectConfig {
 pub struct ItchConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub butler_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub butler_last_checked: Option<u64>,
     pub projects: HashMap<String, ItchProjectConfig>,
 }
 

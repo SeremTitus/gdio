@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const BUTLER_RELEASES_URL: &str = "https://api.github.com/repos/itchio/butler/releases/latest";
+const CHECK_INTERVAL_SECONDS: u64 = 24 * 60 * 60; // 24 hours
 
 #[derive(Debug, Deserialize)]
 struct ButlerRelease {
@@ -60,6 +61,85 @@ async fn ensure_butler(config: &mut Config) -> Result<PathBuf> {
         .as_ref()
         .and_then(|itch| itch.butler_version.clone());
 
+    let last_checked = config
+        .itch
+        .as_ref()
+        .and_then(|itch| itch.butler_last_checked);
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let check_cached = last_checked
+        .map(|ts| now.saturating_sub(ts) < CHECK_INTERVAL_SECONDS)
+        .unwrap_or(false);
+
+    if butler_path.exists() && !needs_download(&butler_path, &installed_version, check_cached) {
+        return Ok(butler_path);
+    }
+
+    match download_butler(config, &butler_path, &butler_dir).await {
+        Ok(path) => Ok(path),
+        Err(download_err) => {
+            eprintln!(
+                "Warning: Failed to download butler: {}. Falling back to system butler.",
+                download_err
+            );
+            find_system_butler()
+                .context("Butler not found. Download failed and no system butler found on PATH.")
+        }
+    }
+}
+
+fn needs_download(
+    butler_path: &Path,
+    installed_version: &Option<String>,
+    check_cached: bool,
+) -> bool {
+    if check_cached {
+        return false;
+    }
+    if !butler_path.exists() {
+        return true;
+    }
+    match installed_version {
+        Some(_) => false, // version matches (already checked recently or same version)
+        None => true,
+    }
+}
+
+fn find_system_butler() -> Result<PathBuf> {
+    let name = if cfg!(target_os = "windows") {
+        "butler.exe"
+    } else {
+        "butler"
+    };
+    let output = Command::new(if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    })
+    .arg(name)
+    .output()
+    .context("Failed to run which/where")?;
+
+    if output.status.success() {
+        let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let first_line = path_str.lines().next().unwrap_or(&path_str);
+        let path = PathBuf::from(first_line);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+    anyhow::bail!("butler not found on PATH")
+}
+
+async fn download_butler(
+    config: &mut Config,
+    butler_path: &Path,
+    butler_dir: &Path,
+) -> Result<PathBuf> {
     let client = butler_client()?;
     let release: ButlerRelease = client
         .get(BUTLER_RELEASES_URL)
@@ -70,17 +150,14 @@ async fn ensure_butler(config: &mut Config) -> Result<PathBuf> {
         .await
         .context("Failed to parse butler release info")?;
 
-    let needs_download = if butler_path.exists() {
-        match &installed_version {
-            Some(v) => release.tag_name != *v,
-            None => true,
-        }
-    } else {
-        true
-    };
+    let needs = needs_download(
+        butler_path,
+        &config.itch.as_ref().and_then(|i| i.butler_version.clone()),
+        false,
+    );
 
-    if !needs_download {
-        return Ok(butler_path);
+    if !needs {
+        return Ok(butler_path.to_path_buf());
     }
 
     println!("Downloading butler...");
@@ -97,7 +174,7 @@ async fn ensure_butler(config: &mut Config) -> Result<PathBuf> {
     std::fs::create_dir_all(&downloads_dir)?;
     let zip_path = downloads_dir.join(&asset.name);
 
-    let result = download_and_extract_butler(&client, asset, &zip_path, &butler_dir, &release).await;
+    let result = download_and_extract_butler(&client, asset, &zip_path, butler_dir, &release).await;
 
     let _ = std::fs::remove_file(&zip_path);
 
@@ -119,11 +196,17 @@ async fn ensure_butler(config: &mut Config) -> Result<PathBuf> {
 
     let itch_config = config.get_or_default_itch();
     itch_config.butler_version = Some(release.tag_name.clone());
+    itch_config.butler_last_checked = Some(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+    );
     config.save()?;
 
     println!("  ✓ butler {} installed", release.tag_name);
 
-    Ok(butler_path)
+    Ok(butler_path.to_path_buf())
 }
 
 async fn download_and_extract_butler(
@@ -152,7 +235,10 @@ async fn download_and_extract_butler(
             .progress_chars("=>-"),
     );
     let size_mb = total_size as f64 / (1024.0 * 1024.0);
-    pb.set_message(format!("Downloading butler {} ({:.1} MB)", release.tag_name, size_mb));
+    pb.set_message(format!(
+        "Downloading butler {} ({:.1} MB)",
+        release.tag_name, size_mb
+    ));
 
     let mut file = tokio::fs::File::create(zip_path)
         .await
@@ -170,6 +256,8 @@ async fn download_and_extract_butler(
     }
     pb.finish_with_message(format!("Downloaded butler {}", release.tag_name));
     println!();
+
+    drop(file);
 
     std::fs::create_dir_all(butler_dir)?;
 
@@ -260,12 +348,21 @@ fn zip_dir(dir: &Path, zip_path: &Path) -> Result<()> {
     Ok(())
 }
 
-async fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &mut Config) -> Result<()> {
+async fn run_upload(
+    platform: &PlatformFlags,
+    debug: bool,
+    name: bool,
+    config: &mut Config,
+) -> Result<()> {
     let ctx = super::shared::ProjectContext::detect("game")?;
 
     let butler_path = ensure_butler(config).await?;
 
-    let itch_project = match config.itch.as_ref().and_then(|itch| itch.get_project(&ctx.project_path)) {
+    let itch_project = match config
+        .itch
+        .as_ref()
+        .and_then(|itch| itch.get_project(&ctx.project_path))
+    {
         Some(p) => p.clone(),
         None => {
             println!();
@@ -274,11 +371,16 @@ async fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &
                 .interact_text()?;
 
             if !game.contains('/') {
-                anyhow::bail!("Game identifier must be in 'user/game' format (e.g. 'myuser/mygame').");
+                anyhow::bail!(
+                    "Game identifier must be in 'user/game' format (e.g. 'myuser/mygame')."
+                );
             }
 
             let itch_config = config.get_or_default_itch();
-            itch_config.set_project(&ctx.project_path, crate::config::ItchProjectConfig { game: game.clone() });
+            itch_config.set_project(
+                &ctx.project_path,
+                crate::config::ItchProjectConfig { game: game.clone() },
+            );
             config.save()?;
 
             crate::config::ItchProjectConfig { game }
