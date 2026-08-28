@@ -32,6 +32,7 @@ pub fn run(_config: &Config) -> Result<()> {
     let global_addons_dir = Config::get_global_addons_dir();
     let editors_dir = Config::get_editors_dir();
     let templates_dir = Config::get_godot_templates_dir();
+    let butler_dir = Config::get_butler_dir();
 
     let binary_path = std::env::current_exe().ok().map_or_else(
         || "unknown".to_string(),
@@ -47,8 +48,9 @@ pub fn run(_config: &Config) -> Result<()> {
     let global_addons_size = dir_size(&global_addons_dir);
     let editors_size = dir_size(&editors_dir);
     let templates_size = dir_size(&templates_dir);
+    let butler_size = dir_size(&butler_dir);
 
-    let total = binary_size + config_size + editors_size + templates_size;
+    let total = binary_size + config_size + editors_size + templates_size + butler_size;
 
     let header = Style::new().bold();
     let blue = Style::new().blue();
@@ -88,6 +90,12 @@ pub fn run(_config: &Config) -> Result<()> {
         "Export templates",
         format_size(templates_size),
         dim.apply_to(templates_dir.display())
+    );
+    println!(
+        "  {:<25} {:<12} {}",
+        "Butler",
+        format_size(butler_size),
+        dim.apply_to(butler_dir.display())
     );
     println!("{}", "-".repeat(70));
     println!("  {} {:<12}", blue.apply_to("Total"), format_size(total));

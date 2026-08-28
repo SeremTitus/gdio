@@ -27,6 +27,8 @@ pub struct Config {
     pub addons: AddonsConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gdre_tools_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gdre_tools_last_checked: Option<u64>,
 }
 
 impl Config {
@@ -159,6 +161,7 @@ impl Config {
     pub fn get_or_default_itch(&mut self) -> &mut ItchConfig {
         self.itch.get_or_insert_with(|| ItchConfig {
             butler_version: None,
+            butler_last_checked: None,
             projects: HashMap::new(),
         })
     }

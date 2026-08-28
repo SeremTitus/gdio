@@ -21,7 +21,7 @@ fn find_recoverable_files(dir: &Path) -> Vec<PathBuf> {
                 match ext.as_str() {
                     "pck" => pck.push(path),
                     "apk" => apk.push(path),
-                    "exe" | "" => {
+                    "exe" => {
                         let name = path
                             .file_name()
                             .unwrap_or_default()
@@ -70,7 +70,12 @@ pub async fn run(output: Option<&str>, config: &mut Config) -> Result<()> {
     } else {
         let names: Vec<String> = recover_files
             .iter()
-            .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
+            .map(|p| {
+                p.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string()
+            })
             .collect();
         let idx = dialoguer::FuzzySelect::new()
             .with_prompt("Multiple recoverable files found. Select one")
@@ -95,7 +100,7 @@ pub async fn run(output: Option<&str>, config: &mut Config) -> Result<()> {
     }
 
     println!("Running GDRE Tools recovery...\n");
-    println!("  Tool:    {}", gdre_tools_path);
+    println!("  Tool:    {}", gdre_tools_path.display());
     println!("  File:    {}", recover_file.display());
     println!("  Output:  {}\n", output_path.display());
 
@@ -104,7 +109,12 @@ pub async fn run(output: Option<&str>, config: &mut Config) -> Result<()> {
         .arg(format!("--recover={}", recover_file.display()))
         .arg(format!("--output={}", output_path.display()))
         .status()
-        .with_context(|| format!("Failed to execute GDRE Tools at '{}'", gdre_tools_path))?;
+        .with_context(|| {
+            format!(
+                "Failed to execute GDRE Tools at '{}'",
+                gdre_tools_path.display()
+            )
+        })?;
 
     if status.success() {
         println!(
