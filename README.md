@@ -213,6 +213,15 @@ gdio test test --visual                       # visual mode with specific folder
 
 Show latest Godot news from the official blog.
 
+### `gdio tags`
+
+Manages Project tags.
+
+```bash
+gdio tags                                      # list current tags
+gdio tags rpg                                  # toggle add/remove a tag
+```
+
 ### `gdio addons`
 
 Manage addons from the [Godot Asset Store](https://store.godotengine.org/) and third-party repositories.
