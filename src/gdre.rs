@@ -165,11 +165,12 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<PathBuf> {
         .as_secs();
 
     let check_cached = config
-        .gdre_tools_last_checked
+        .gdre_tools
+        .last_checked
         .map(|ts| now.saturating_sub(ts) < CHECK_INTERVAL_SECONDS)
         .unwrap_or(false);
 
-    if exe_path.exists() && config.gdre_tools_version.is_some() && check_cached {
+    if exe_path.exists() && config.gdre_tools.version.is_some() && check_cached {
         return Ok(exe_path);
     }
 
@@ -177,7 +178,7 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<PathBuf> {
         Ok(release) => {
             let latest_version = release.tag_name.trim_start_matches('v').to_string();
 
-            let needs_update = match &config.gdre_tools_version {
+            let needs_update = match &config.gdre_tools.version {
                 Some(current) => current != &latest_version || !exe_path.exists(),
                 None => !exe_path.exists(),
             };
@@ -249,19 +250,19 @@ pub async fn ensure_gdre_tools(config: &mut Config) -> Result<PathBuf> {
                     }
                 }
 
-                config.gdre_tools_version = Some(latest_version.clone());
-                config.gdre_tools_last_checked = Some(now);
+                config.gdre_tools.version = Some(latest_version.clone());
+                config.gdre_tools.last_checked = Some(now);
                 config.save()?;
 
                 println!("GDRE Tools v{} installed.\n", latest_version);
             } else {
-                config.gdre_tools_last_checked = Some(now);
+                config.gdre_tools.last_checked = Some(now);
                 let _ = config.save();
             }
         }
         Err(_) if exe_path.exists() => {
             eprintln!("Warning: Could not check for GDRE Tools updates, using installed version.");
-            config.gdre_tools_last_checked = Some(now);
+            config.gdre_tools.last_checked = Some(now);
             let _ = config.save();
         }
         Err(e) => {

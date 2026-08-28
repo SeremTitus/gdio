@@ -17,6 +17,24 @@ pub use itch::{ItchConfig, ItchProjectConfig};
 pub use projects::{ProjectInfo, format_relative_time};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+pub struct GdreToolsConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_checked: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+pub struct NewsConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_shown_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shown_count: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_shown_at: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct Config {
     pub editors: HashMap<String, EditorInfo>,
     pub projects: HashMap<String, ProjectInfo>,
@@ -25,10 +43,10 @@ pub struct Config {
     pub itch: Option<ItchConfig>,
     #[serde(default)]
     pub addons: AddonsConfig,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gdre_tools_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gdre_tools_last_checked: Option<u64>,
+    #[serde(default)]
+    pub gdre_tools: GdreToolsConfig,
+    #[serde(default)]
+    pub news: NewsConfig,
 }
 
 impl Config {

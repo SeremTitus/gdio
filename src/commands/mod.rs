@@ -8,6 +8,7 @@ pub mod default;
 pub mod game;
 pub mod list;
 pub mod new;
+pub mod news;
 pub mod projects;
 pub mod recent;
 pub mod recovery;
