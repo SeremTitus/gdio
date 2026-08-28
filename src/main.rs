@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod gdre;
 mod github;
 mod godot;
 mod platform;
@@ -236,6 +237,12 @@ enum Commands {
         /// Install completions to the appropriate shell config directory
         #[arg(short, long)]
         install: bool,
+    },
+
+    /// Recover a Godot project from exported game files using GDRE Tools
+    Recovery {
+        /// Output path for recovered content (default: "recovered" folder in current dir)
+        output: Option<String>,
     },
 }
 
@@ -509,6 +516,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             },
             Commands::Completions { .. } => unreachable!(),
+
+            Commands::Recovery { output } => {
+                commands::recovery::run(output.as_deref(), &mut config).await?;
+            }
         },
     }
 

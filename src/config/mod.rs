@@ -25,6 +25,8 @@ pub struct Config {
     pub itch: Option<ItchConfig>,
     #[serde(default)]
     pub addons: AddonsConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gdre_tools_version: Option<String>,
 }
 
 impl Config {
@@ -68,6 +70,10 @@ impl Config {
 
     pub fn get_addons_cache_dir() -> PathBuf {
         Self::get_downloads_dir()
+    }
+
+    pub fn get_gdre_tools_dir() -> PathBuf {
+        Self::config_dir().join("gdre_tools")
     }
 
     pub fn load() -> Result<Self> {
