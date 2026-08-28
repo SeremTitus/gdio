@@ -432,7 +432,7 @@ async fn main() -> anyhow::Result<()> {
                 debug,
                 name,
             } => {
-                commands::up::run(setup, &platform, debug, name, &mut config)?;
+                commands::up::run(setup, &platform, debug, name, &mut config).await?;
             }
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;

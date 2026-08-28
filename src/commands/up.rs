@@ -3,38 +3,198 @@ use crate::platform::PlatformFlags;
 use crate::project;
 use anyhow::{Context, Result};
 use console::Style;
+use futures_util::stream::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn detect_butler() -> Option<String> {
-    let config_dir = dirs::config_dir()?;
-    let broth_dir = config_dir.join("itch").join("broth").join("butler");
+const BUTLER_RELEASES_URL: &str = "https://api.github.com/repos/itchio/butler/releases/latest";
 
-    let version_file = broth_dir.join(".chosen-version");
-    if let Ok(version) = std::fs::read_to_string(&version_file) {
-        let version = version.trim().to_string();
-        if !version.is_empty() {
-            let butler_path = if cfg!(target_os = "windows") {
-                broth_dir.join("versions").join(&version).join("butler.exe")
-            } else {
-                broth_dir.join("versions").join(&version).join("butler")
-            };
+#[derive(Debug, Deserialize)]
+struct ButlerRelease {
+    tag_name: String,
+    assets: Vec<ButlerAsset>,
+}
 
-            if butler_path.exists() {
-                return Some(butler_path.to_string_lossy().to_string());
+#[derive(Debug, Deserialize)]
+struct ButlerAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+fn butler_client() -> Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .user_agent("gdio")
+        .build()
+        .context("Failed to build HTTP client")
+}
+
+fn platform_asset_name() -> Result<(&'static str, &'static str)> {
+    if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
+        Ok(("windows", "amd64"))
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
+        Ok(("linux", "amd64"))
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "aarch64") {
+        Ok(("linux", "arm64"))
+    } else if cfg!(target_os = "macos") && cfg!(target_arch = "x86_64") {
+        Ok(("darwin", "amd64"))
+    } else if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+        Ok(("darwin", "arm64"))
+    } else {
+        anyhow::bail!(
+            "Unsupported platform for butler download: {}-{}",
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        );
+    }
+}
+
+async fn ensure_butler(config: &mut Config) -> Result<PathBuf> {
+    let butler_path = Config::get_butler_path();
+    let butler_dir = Config::get_butler_dir();
+
+    let installed_version = config
+        .itch
+        .as_ref()
+        .and_then(|itch| itch.butler_version.clone());
+
+    let client = butler_client()?;
+    let release: ButlerRelease = client
+        .get(BUTLER_RELEASES_URL)
+        .send()
+        .await
+        .context("Failed to fetch butler release info")?
+        .json()
+        .await
+        .context("Failed to parse butler release info")?;
+
+    let needs_download = if butler_path.exists() {
+        match &installed_version {
+            Some(v) => release.tag_name != *v,
+            None => true,
+        }
+    } else {
+        true
+    };
+
+    if !needs_download {
+        return Ok(butler_path);
+    }
+
+    println!("Downloading butler...");
+
+    let (os, arch) = platform_asset_name()?;
+    let zip_name = format!("butler-{}-{}.zip", os, arch);
+    let asset = release
+        .assets
+        .iter()
+        .find(|a| a.name == zip_name)
+        .with_context(|| format!("No butler asset found for {}-{}", os, arch))?;
+
+    let downloads_dir = Config::get_downloads_dir();
+    std::fs::create_dir_all(&downloads_dir)?;
+    let zip_path = downloads_dir.join(&asset.name);
+
+    let result = download_and_extract_butler(&client, asset, &zip_path, &butler_dir, &release).await;
+
+    let _ = std::fs::remove_file(&zip_path);
+
+    result?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        for entry in std::fs::read_dir(butler_dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                std::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(0o755))
+                    .with_context(|| {
+                        format!("Failed to set permissions on {}", entry.path().display())
+                    })?;
             }
         }
     }
 
-    if Command::new("butler").arg("--version").output().is_ok() {
-        return Some("butler".to_string());
-    }
+    let itch_config = config.get_or_default_itch();
+    itch_config.butler_version = Some(release.tag_name.clone());
+    config.save()?;
 
-    None
+    println!("  ✓ butler {} installed", release.tag_name);
+
+    Ok(butler_path)
 }
 
-pub fn run(
+async fn download_and_extract_butler(
+    client: &reqwest::Client,
+    asset: &ButlerAsset,
+    zip_path: &Path,
+    butler_dir: &Path,
+    release: &ButlerRelease,
+) -> Result<()> {
+    let resp = client
+        .get(&asset.browser_download_url)
+        .send()
+        .await
+        .context("Failed to start butler download")?;
+
+    if !resp.status().is_success() {
+        anyhow::bail!("Butler download failed: HTTP {}", resp.status());
+    }
+
+    let total_size = resp.content_length().unwrap_or(0);
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec})")
+            .unwrap_or_else(|_| ProgressStyle::default_bar())
+            .progress_chars("=>-"),
+    );
+    let size_mb = total_size as f64 / (1024.0 * 1024.0);
+    pb.set_message(format!("Downloading butler {} ({:.1} MB)", release.tag_name, size_mb));
+
+    let mut file = tokio::fs::File::create(zip_path)
+        .await
+        .context("Failed to create butler zip file")?;
+    let mut stream = resp.bytes_stream();
+    let mut downloaded: u64 = 0;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.context("Failed to read butler download chunk")?;
+        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+            .await
+            .context("Failed to write butler download chunk")?;
+        downloaded += chunk.len() as u64;
+        pb.set_position(downloaded);
+    }
+    pb.finish_with_message(format!("Downloaded butler {}", release.tag_name));
+    println!();
+
+    std::fs::create_dir_all(butler_dir)?;
+
+    let zip_file = std::fs::File::open(zip_path)?;
+    let mut archive =
+        zip::ZipArchive::new(zip_file).context("Failed to open butler zip archive")?;
+
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i)?;
+        if entry.is_dir() {
+            continue;
+        }
+        let filename = entry
+            .enclosed_name()
+            .and_then(|p| p.file_name().map(|f| f.to_owned()))
+            .context("Invalid file name in butler zip")?;
+        let outpath = butler_dir.join(&filename);
+        let mut outfile = std::fs::File::create(&outpath)?;
+        std::io::copy(&mut entry, &mut outfile)?;
+    }
+
+    Ok(())
+}
+
+pub async fn run(
     setup: bool,
     platform: &PlatformFlags,
     debug: bool,
@@ -42,40 +202,25 @@ pub fn run(
     config: &mut Config,
 ) -> Result<()> {
     if setup {
-        return run_setup(config);
+        return run_setup(config).await;
     }
-    run_upload(platform, debug, name, config)
+    run_upload(platform, debug, name, config).await
 }
 
-fn run_setup(config: &mut Config) -> Result<()> {
+async fn run_setup(config: &mut Config) -> Result<()> {
     let ctx = super::shared::ProjectContext::detect("game")?;
 
     println!("=== itch.io upload setup ===\n");
 
-    let default_butler = config
-        .itch
-        .as_ref()
-        .map(|itch| itch.butler_path.clone())
-        .or_else(detect_butler)
-        .unwrap_or_else(|| "butler".to_string());
-    let butler_path: String = dialoguer::Input::new()
-        .with_prompt("Path to butler")
-        .default(default_butler)
-        .interact_text()?;
-
-    let butler_path = butler_path
-        .trim_matches(|c| c == '"' || c == '\'')
-        .to_string();
+    let butler_path = ensure_butler(config).await?;
 
     let butler_valid = Command::new(&butler_path).arg("--version").output().is_ok();
     if !butler_valid {
         anyhow::bail!(
-            "Could not run butler at '{}'. Make sure it is installed and on your PATH.\n\
-             Download butler from: https://itch.io/docs/butler/installing.html",
-            butler_path
+            "Could not run butler at '{}'. Download may have failed.",
+            butler_path.display()
         );
     }
-    println!("  ✓ butler found at '{}'\n", butler_path);
 
     let game: String = dialoguer::Input::new()
         .with_prompt("itch.io game identifier (user/game)")
@@ -86,8 +231,6 @@ fn run_setup(config: &mut Config) -> Result<()> {
     }
 
     let itch_config = config.get_or_default_itch();
-    itch_config.butler_path = butler_path;
-
     itch_config.set_project(&ctx.project_path, crate::config::ItchProjectConfig { game });
     config.save()?;
 
@@ -117,22 +260,33 @@ fn zip_dir(dir: &Path, zip_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config) -> Result<()> {
+async fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &mut Config) -> Result<()> {
     let ctx = super::shared::ProjectContext::detect("game")?;
 
-    let itch = config
-        .itch
-        .as_ref()
-        .context("No itch.io configuration found. Run 'gdio up --setup' first.")?;
+    let butler_path = ensure_butler(config).await?;
 
-    let itch_project = itch.get_project(&ctx.project_path).context(
-        "This project is not configured for itch.io upload. Run 'gdio up --setup' first.",
-    )?;
+    let itch_project = match config.itch.as_ref().and_then(|itch| itch.get_project(&ctx.project_path)) {
+        Some(p) => p.clone(),
+        None => {
+            println!();
+            let game: String = dialoguer::Input::new()
+                .with_prompt("itch.io game identifier (user/game)")
+                .interact_text()?;
 
-    let butler_path = &itch.butler_path;
+            if !game.contains('/') {
+                anyhow::bail!("Game identifier must be in 'user/game' format (e.g. 'myuser/mygame').");
+            }
+
+            let itch_config = config.get_or_default_itch();
+            itch_config.set_project(&ctx.project_path, crate::config::ItchProjectConfig { game: game.clone() });
+            config.save()?;
+
+            crate::config::ItchProjectConfig { game }
+        }
+    };
+
     let game = &itch_project.game;
 
-    // Parse presets to determine platforms
     let presets_file = ctx.cwd.join("export_presets.cfg");
     if !presets_file.exists() {
         anyhow::bail!(
@@ -145,7 +299,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         anyhow::bail!("No export presets found in export_presets.cfg.");
     }
 
-    // Group presets by platform
     let mut platform_presets: std::collections::HashMap<String, Vec<&project::ExportPreset>> =
         std::collections::HashMap::new();
     for preset in &presets {
@@ -161,7 +314,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         anyhow::bail!("No valid platforms found in export presets.");
     }
 
-    // Determine which platforms to build/upload
     let unique_platforms: Vec<String> = platform_presets.keys().cloned().collect();
     let platforms: Vec<String> = if platform.any() {
         platform.to_platforms()
@@ -169,7 +321,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         unique_platforms
     };
 
-    // For each selected platform, pick a preset (prompt if multiple)
     let mut selected_presets: Vec<(String, &project::ExportPreset)> = Vec::new();
     for platform in &platforms {
         let Some(presets_for) = platform_presets.get(platform) else {
@@ -190,7 +341,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         selected_presets.push((platform.clone(), preset));
     }
 
-    // Export
     let editor = if let Some(editor) = ctx.bound_editor(config) {
         editor.clone()
     } else if let Some((version, editor)) = ctx.find_editor_for_detected_version(config) {
@@ -218,7 +368,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
 
     let project_snake = super::shared::snake_case(&ctx.project_name);
 
-    // Determine channel names for each platform
     let mut channels: HashMap<String, String> = HashMap::new();
 
     for platform in &platforms {
@@ -247,7 +396,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
     let output_dir = ctx.cwd.join("export");
     std::fs::create_dir_all(&output_dir)?;
 
-    // Track exported paths per platform for zipping
     let mut exported: Vec<(String, PathBuf)> = Vec::new();
 
     for (preset_platform, preset) in &selected_presets {
@@ -284,7 +432,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         anyhow::bail!("No exports produced.");
     }
 
-    // Zip and upload
     println!("\nUploading to itch.io...\n");
 
     let temp_dir = std::env::temp_dir().join("gdio_upload");
@@ -309,7 +456,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
         let target = format!("{}:{}", game, channel);
         println!("  Uploading {} → {}...", platform, target);
 
-        let status = Command::new(butler_path)
+        let status = Command::new(&butler_path)
             .args([
                 "push",
                 &zip_path.to_string_lossy(),
@@ -318,7 +465,7 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
                 &game_version_display,
             ])
             .status()
-            .with_context(|| format!("Failed to run butler at '{}'", butler_path))?;
+            .with_context(|| format!("Failed to run butler at '{}'", butler_path.display()))?;
 
         if !status.success() {
             let red = Style::new().red();
@@ -334,7 +481,6 @@ fn run_upload(platform: &PlatformFlags, debug: bool, name: bool, config: &Config
             println!("  ✓ {} uploaded", platform);
         }
 
-        // Clean up zip
         let _ = std::fs::remove_file(&zip_path);
     }
 

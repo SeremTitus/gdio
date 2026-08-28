@@ -76,6 +76,19 @@ impl Config {
         Self::config_dir().join("gdre_tools")
     }
 
+    pub fn get_butler_dir() -> PathBuf {
+        Self::config_dir().join("butler")
+    }
+
+    pub fn get_butler_path() -> PathBuf {
+        let dir = Self::get_butler_dir();
+        if cfg!(target_os = "windows") {
+            dir.join("butler.exe")
+        } else {
+            dir.join("butler")
+        }
+    }
+
     pub fn load() -> Result<Self> {
         let path = Self::config_path();
         let mut config: Config = if !path.exists() {
@@ -145,7 +158,7 @@ impl Config {
 
     pub fn get_or_default_itch(&mut self) -> &mut ItchConfig {
         self.itch.get_or_insert_with(|| ItchConfig {
-            butler_path: "butler".to_string(),
+            butler_version: None,
             projects: HashMap::new(),
         })
     }
