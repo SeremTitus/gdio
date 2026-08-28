@@ -8,7 +8,8 @@ pub struct ItchProjectConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItchConfig {
-    pub butler_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub butler_version: Option<String>,
     pub projects: HashMap<String, ItchProjectConfig>,
 }
 
