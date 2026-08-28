@@ -209,6 +209,10 @@ gdio test test --visual                       # visual mode with specific folder
 
 `--visual`/`-v` opens the GUT test runner window instead of running headless.
 
+### `gdio news`
+
+Show latest Godot news from the official blog.
+
 ### `gdio addons`
 
 Manage addons from the [Godot Asset Store](https://store.godotengine.org/) and third-party repositories.

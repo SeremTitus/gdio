@@ -248,6 +248,12 @@ enum Commands {
         /// Output path for recovered content (default: "recovered" folder in current dir)
         output: Option<String>,
     },
+
+    /// Show latest Godot news
+    News {
+        /// Number of articles to list (default: 5)
+        count: Option<usize>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -523,8 +529,14 @@ async fn main() -> anyhow::Result<()> {
             Commands::Recovery { output } => {
                 commands::recovery::run(output.as_deref(), &mut config).await?;
             }
+            Commands::News { count } => {
+                commands::news::run(count.unwrap_or(5)).await?;
+                return Ok(());
+            }
         },
     }
+
+    let _ = commands::news::show_latest(&mut config).await;
 
     Ok(())
 }
