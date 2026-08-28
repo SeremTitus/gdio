@@ -249,6 +249,12 @@ enum Commands {
         output: Option<String>,
     },
 
+    /// List or toggle project tags
+    Tags {
+        /// Tag name to toggle (add if missing, remove if present)
+        tag: Option<String>,
+    },
+
     /// Show latest Godot news
     News {
         /// Number of articles to list (default: 5)
@@ -448,6 +454,9 @@ async fn main() -> anyhow::Result<()> {
             }
             Commands::Cost => {
                 commands::cost::run(&config)?;
+            }
+            Commands::Tags { tag } => {
+                commands::tags::run(tag.as_deref())?;
             }
             Commands::Test {
                 init,

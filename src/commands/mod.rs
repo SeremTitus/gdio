@@ -14,6 +14,7 @@ pub mod recent;
 pub mod recovery;
 pub mod remove;
 pub mod shared;
+pub mod tags;
 pub mod templates;
 pub mod test;
 pub mod uninstall;

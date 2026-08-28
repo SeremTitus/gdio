@@ -1,4 +1,104 @@
+use std::collections::BTreeSet;
 use std::path::Path;
+
+pub fn parse_tags(project_path: &Path) -> Vec<String> {
+    let content = match std::fs::read_to_string(project_path) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("config/tags=") {
+            return parse_packed_string_array(trimmed);
+        }
+    }
+    vec![]
+}
+
+fn parse_packed_string_array(line: &str) -> Vec<String> {
+    if let Some(start) = line.find('(') {
+        if let Some(end) = line.rfind(')') {
+            let inner = &line[start + 1..end];
+            let mut tags = Vec::new();
+            for s in inner.split(',') {
+                let s = s.trim();
+                if s.starts_with('"') && s.ends_with('"') {
+                    let val = &s[1..s.len() - 1];
+                    if !val.is_empty() {
+                        tags.push(val.to_string());
+                    }
+                }
+            }
+            return tags;
+        }
+    }
+    vec![]
+}
+
+pub fn write_tags(project_path: &Path, tags: &[String]) -> anyhow::Result<()> {
+    let content = std::fs::read_to_string(project_path)?;
+    let had_newline = content.ends_with('\n');
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+
+    let sorted: BTreeSet<&str> = tags.iter().map(|s| s.as_str()).collect();
+    let packed = if sorted.is_empty() {
+        String::new()
+    } else {
+        let items: Vec<String> = sorted.iter().map(|t| format!("\"{}\"", t)).collect();
+        format!("config/tags=PackedStringArray({})", items.join(", "))
+    };
+
+    let mut in_application = false;
+    let mut tags_line_idx = None;
+    let mut application_section_idx = None;
+    let mut last_config_line_in_application = None;
+
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed == "[application]" {
+            in_application = true;
+            application_section_idx = Some(i);
+        } else if trimmed.starts_with('[') && in_application {
+            in_application = false;
+        }
+        if in_application {
+            if trimmed.starts_with("config/tags=") {
+                tags_line_idx = Some(i);
+            }
+            if trimmed.starts_with("config/") {
+                last_config_line_in_application = Some(i);
+            }
+        }
+    }
+
+    if let Some(idx) = tags_line_idx {
+        if packed.is_empty() {
+            lines.remove(idx);
+        } else {
+            lines[idx] = packed;
+        }
+    } else if !packed.is_empty() {
+        if let Some(last_cfg) = last_config_line_in_application {
+            lines.insert(last_cfg + 1, packed);
+        } else if let Some(app_idx) = application_section_idx {
+            lines.insert(app_idx + 1, packed);
+        } else {
+            // No [application] section — append one at the end
+            if !lines.is_empty() && !lines.last().map_or(true, |l| l.is_empty()) {
+                lines.push(String::new());
+            }
+            lines.push("[application]".to_string());
+            lines.push(packed);
+        }
+    }
+
+    let mut output = lines.join("\n");
+    if had_newline && !output.ends_with('\n') {
+        output.push('\n');
+    }
+    std::fs::write(project_path, output)?;
+    Ok(())
+}
 
 pub fn parse_godot_version(project_path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(project_path).ok()?;
