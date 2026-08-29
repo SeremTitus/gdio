@@ -1,5 +1,6 @@
 pub mod add;
 pub mod addons;
+pub mod args;
 pub mod bind;
 pub mod build;
 pub mod clone;
@@ -13,6 +14,7 @@ pub mod projects;
 pub mod recent;
 pub mod recovery;
 pub mod remove;
+pub mod script;
 pub mod shared;
 pub mod tags;
 pub mod templates;

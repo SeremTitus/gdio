@@ -144,6 +144,19 @@ enum Commands {
     /// Open current project in game mode
     Game,
 
+    /// Run the editor with custom arguments
+    Args {
+        /// Arguments to pass to the editor
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// Run a script headless with the project editor
+    Script {
+        /// Script file path (e.g., my_script.gd)
+        file: String,
+    },
+
     /// Open the last project opened by gdio
     Recent,
 
@@ -425,6 +438,12 @@ async fn main() -> anyhow::Result<()> {
             }
             Commands::Game => {
                 commands::game::run(&config)?;
+            }
+            Commands::Args { args } => {
+                commands::args::run(&args, &config)?;
+            }
+            Commands::Script { file } => {
+                commands::script::run(&file, &mut config).await?;
             }
             Commands::Recent => {
                 commands::recent::run(&mut config).await?;
