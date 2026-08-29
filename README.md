@@ -222,6 +222,25 @@ gdio tags                                      # list current tags
 gdio tags rpg                                  # toggle add/remove a tag
 ```
 
+### `gdio args <args...>`
+
+Run the editor with custom arguments `{editor} --path {project} <your args ...>`.
+
+```bash
+gdio args -e --verbose                         # open project with verbose logging
+gdio args -e --quit --quit-after 10            # open, run for 10 frames, then quit
+gdio args --import --headless                  # force reimport
+```
+
+### `gdio script <file>`
+
+Run a script headless using the project's bound editor. If not inside a Godot project, interactively selects an editor.
+
+```bash
+gdio script res://scripts/my_script.gd         # run a GDScript file
+gdio script tools/export_tool.gd               # run a tool script
+```
+
 ### `gdio addons`
 
 Manage addons from the [Godot Asset Store](https://store.godotengine.org/) and third-party repositories.
