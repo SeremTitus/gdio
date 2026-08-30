@@ -311,12 +311,20 @@ async fn download_and_extract(
             }
             let mut outfile = std::fs::File::create(&outpath)?;
             std::io::copy(&mut entry, &mut outfile)?;
+
+            // Set permissions from zip entry on Unix, or default 0o755 if not available
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = entry.unix_mode().unwrap_or(0o755);
+                let _ = std::fs::set_permissions(&outpath, std::fs::Permissions::from_mode(mode));
+            }
         }
     }
 
     let exe = find_executable_in_dir(dest_dir)?;
 
-    // Ensure the binary is executable on Unix
+    // Ensure the binary is executable on Unix (in case zip didn't preserve permissions)
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
