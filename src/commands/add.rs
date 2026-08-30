@@ -34,8 +34,8 @@ fn looks_like_path(s: &str) -> bool {
 pub fn parse_version_arg(arg: &str) -> (String, Option<String>) {
     let (ver, flavor) = config::parse_version_flavor(arg);
     if flavor == "stable" {
-        // No explicit flavor specified
-        (arg.to_string(), None)
+        // No explicit flavor specified — use parsed base version
+        (ver.to_string(), None)
     } else {
         (ver.to_string(), Some(flavor.to_string()))
     }
