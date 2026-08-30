@@ -11,7 +11,7 @@
 ## Build and Install
 Clone this repository, `cd` into it's directory and run:
 ```bash
-python scripts\local_install.py
+python scripts/local_install.py
 ```
 
 ## Latest Release Installation
