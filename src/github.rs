@@ -316,6 +316,23 @@ async fn download_and_extract(
 
     let exe = find_executable_in_dir(dest_dir)?;
 
+    // Ensure the binary is executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755));
+        // Also chmod the entire .app bundle on macOS
+        if cfg!(target_os = "macos") {
+            if let Some(parent) = exe.parent() {
+                if let Some(app_dir) = parent.parent() {
+                    if app_dir.extension().is_some_and(|e| e == "app") {
+                        chmod_recursive(app_dir);
+                    }
+                }
+            }
+        }
+    }
+
     let _ = std::fs::remove_file(&zip_path);
 
     Ok((exe, stage.to_string()))
@@ -404,4 +421,20 @@ fn find_executable_in_dir_recursive(dir: &Path, candidates: &mut Vec<PathBuf>) -
         }
     }
     Ok(())
+}
+
+#[cfg(unix)]
+fn chmod_recursive(dir: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755));
+                chmod_recursive(&path);
+            } else {
+                let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755));
+            }
+        }
+    }
 }

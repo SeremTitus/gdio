@@ -53,7 +53,12 @@ pub fn open_headless_export(
             &output_path.to_string_lossy(),
         ])
         .status()
-        .with_context(|| format!("Failed to run export: {}", exe_path.display()))?;
+        .with_context(|| {
+            format!(
+                "Failed to start Godot: {} (check permissions)",
+                exe_path.display()
+            )
+        })?;
 
     if !status.success() {
         anyhow::bail!("Export failed with exit code: {:?}", status.code());
