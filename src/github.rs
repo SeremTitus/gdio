@@ -233,7 +233,7 @@ pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
             "web_dlink_nothreads_release.zip",
         ],
         "ios" => vec!["ios.zip"],
-        "visionos" => vec!["visionos.zip"],
+        "visionos" => vec!["ios.zip"],
         "android" => vec![
             "android_debug.apk",
             "android_release.apk",
