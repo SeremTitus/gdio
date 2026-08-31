@@ -493,6 +493,8 @@ async fn run_upload(
         );
     }
 
+    crate::godot::import_project(&editor.path, &ctx.project_file)?;
+
     println!("Building project for upload...\n");
 
     let output_dir = ctx.cwd.join("export");
