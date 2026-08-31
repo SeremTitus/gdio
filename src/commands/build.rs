@@ -57,6 +57,8 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
         .clone();
     let godot_version = editor.version.clone();
 
+    crate::godot::import_project(&editor.path, &ctx.project_file)?;
+
     for preset in &presets {
         let preset_platform = match project::godot_platform_to_gdio(&preset.platform) {
             Some(p) => p,
