@@ -1,6 +1,6 @@
 ﻿[package]
 name = "gdio"
-version = "1.0.1-stable"
+version = "1.0.2-stable"
 edition = "2024"
 description = "CLI tool for managing Godot Engine projects, editor versions, addons and export templates."
 
