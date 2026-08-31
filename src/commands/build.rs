@@ -71,7 +71,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
             continue;
         }
 
-        ensure_templates(&godot_version, preset_platform).await?;
+        ensure_templates(&godot_version, preset_platform, editor.is_mono).await?;
     }
 
     let mut output_paths = Vec::new();
@@ -138,9 +138,13 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
     Ok(())
 }
 
-async fn ensure_templates(version: &str, platform: &str) -> Result<()> {
+async fn ensure_templates(version: &str, platform: &str, csharp: bool) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
-    let godot_dir = Config::get_godot_templates_dir().join(format!("{}.{}", base_version, flavor));
+    let godot_dir = Config::get_godot_templates_dir().join(if csharp {
+        format!("{}.{}.mono", base_version, flavor)
+    } else {
+        format!("{}.{}", base_version, flavor)
+    });
 
     if godot_dir.exists() {
         let platforms = crate::commands::templates::list::detect_platforms(godot_dir.as_path())?;
@@ -166,6 +170,7 @@ async fn ensure_templates(version: &str, platform: &str) -> Result<()> {
             &client,
             version,
             platform,
+            csharp,
             godot_dir.as_path(),
         )
         .await?;

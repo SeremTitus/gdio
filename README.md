@@ -162,6 +162,7 @@ Manage export templates. Reads from and installs to Godot's native template dire
 gdio templates list                           # show installed templates + variations
 gdio templates add 4.7                        # download all platforms
 gdio templates add 4.7 --windows --web        # download specific platforms
+gdio templates add 4.7 --csharp               # download C# (mono) templates
 gdio templates remove 4.7                     # remove all templates
 gdio templates remove 4.7 --web               # remove only web templates
 ```

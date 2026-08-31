@@ -12,10 +12,11 @@ async fn download_modern_templates(
     client: &reqwest::Client,
     base_version: &str,
     flavor: &str,
+    csharp: bool,
     to_download: &[&str],
     godot_dir: &Path,
 ) -> Result<()> {
-    let mirror_url = api::fetch_mirror_url(client, base_version, flavor).await?;
+    let mirror_url = api::fetch_mirror_url(client, base_version, flavor, csharp).await?;
     println!("Using mirror: {}", mirror_url);
 
     let mp = MultiProgress::new();
@@ -113,7 +114,12 @@ async fn download_modern_templates(
     Ok(())
 }
 
-pub async fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) -> Result<()> {
+pub async fn run(
+    version: &str,
+    platform: &PlatformFlags,
+    csharp: bool,
+    _config: &mut Config,
+) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
 
     // Check if this is a pre-4.x version (full .tpz download)
@@ -137,7 +143,11 @@ pub async fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) 
         platform.to_platforms()
     };
 
-    let godot_dir = Config::get_godot_templates_dir().join(format!("{}.{}", base_version, flavor));
+    let godot_dir = Config::get_godot_templates_dir().join(if csharp {
+        format!("{}.{}.mono", base_version, flavor)
+    } else {
+        format!("{}.{}", base_version, flavor)
+    });
 
     // Check which platforms already exist
     let existing: Vec<&str> = if godot_dir.exists() {
@@ -177,15 +187,28 @@ pub async fn run(version: &str, platform: &PlatformFlags, _config: &mut Config) 
 
     if is_legacy {
         // Legacy (pre-4.x): download full .tpz archive
+        let slug = if csharp {
+            "mono_export_templates.tpz"
+        } else {
+            "export_templates.tpz"
+        };
         let tpz_url = format!(
-            "https://downloads.godotengine.org/?version={}&flavor={}&slug=export_templates.tpz&platform=templates",
-            base_version, flavor
+            "https://downloads.godotengine.org/?version={}&flavor={}&slug={}&platform=templates",
+            base_version, flavor, slug
         );
         println!("Using URL: {}", tpz_url);
         api::download_full_tpz(&client, &tpz_url, &godot_dir).await?;
     } else {
         // 4.x+: download individual files via mirror
-        download_modern_templates(&client, base_version, flavor, &to_download, &godot_dir).await?;
+        download_modern_templates(
+            &client,
+            base_version,
+            flavor,
+            csharp,
+            &to_download,
+            &godot_dir,
+        )
+        .await?;
     }
 
     println!("\nTemplates installed to: {}", godot_dir.display());

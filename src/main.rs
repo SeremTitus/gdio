@@ -288,6 +288,10 @@ enum TemplatesAction {
 
         #[command(flatten)]
         platform: PlatformFlags,
+
+        /// Download C# (mono) export templates
+        #[arg(short, long)]
+        csharp: bool,
     },
 
     /// Remove export templates for a version
@@ -556,8 +560,10 @@ async fn main() -> anyhow::Result<()> {
                 Some(TemplatesAction::Add {
                     godot_version,
                     platform,
+                    csharp,
                 }) => {
-                    commands::templates::add::run(&godot_version, &platform, &mut config).await?;
+                    commands::templates::add::run(&godot_version, &platform, csharp, &mut config)
+                        .await?;
                 }
                 Some(TemplatesAction::Remove {
                     godot_version,
