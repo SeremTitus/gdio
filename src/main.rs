@@ -194,9 +194,8 @@ enum Commands {
 
     /// Upload project to itch.io via butler
     Up {
-        /// Run interactive setup for itch.io upload configuration
-        #[arg(short, long)]
-        setup: bool,
+        #[command(subcommand)]
+        action: Option<UpAction>,
 
         #[command(flatten)]
         platform: PlatformFlags,
@@ -299,6 +298,16 @@ enum TemplatesAction {
 
         #[command(flatten)]
         platform: PlatformFlags,
+    },
+}
+
+#[derive(Subcommand)]
+#[command(rename_all = "lowercase")]
+enum UpAction {
+    /// Setup itch.io upload configuration (game identifier)
+    Setup {
+        /// itch.io game identifier (e.g., myuser/mygame)
+        game: String,
     },
 }
 
@@ -461,13 +470,18 @@ async fn main() -> anyhow::Result<()> {
                 commands::build::run(&platform, debug, &config).await?;
             }
             Commands::Up {
-                setup,
+                action,
                 platform,
                 debug,
                 name,
-            } => {
-                commands::up::run(setup, &platform, debug, name, &mut config).await?;
-            }
+            } => match action {
+                None => {
+                    commands::up::run(&platform, debug, name, &mut config).await?;
+                }
+                Some(UpAction::Setup { game }) => {
+                    commands::up::run_setup_with_game(&game, &mut config).await?;
+                }
+            },
             Commands::Uninstall { keep } => {
                 commands::uninstall::run(keep)?;
             }
