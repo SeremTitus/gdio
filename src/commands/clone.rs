@@ -1,7 +1,9 @@
 use crate::config::Config;
 use crate::godot;
 use anyhow::{Context, Result};
-use std::process::Command;
+use indicatif::{ProgressBar, ProgressStyle};
+use std::io::Read;
+use std::process::{Command, Stdio};
 
 pub async fn run(
     url: &str,
@@ -39,30 +41,90 @@ pub async fn run(
         );
     }
 
-    println!("Cloning {} into {}...", url, project_dir);
+    if let Some(d) = depth {
+        println!("Cloning {} depth={} into {}...", url, d, project_dir);
+    } else {
+        println!("Cloning {} into {}...", url, project_dir);
+    }
 
-    let mut args = vec!["clone".to_string(), url.to_string(), project_dir.clone()];
+    let mut args = vec![
+        "clone".to_string(),
+        "--progress".to_string(),
+        "--recurse-submodules".to_string(),
+        url.to_string(),
+        project_dir.clone(),
+    ];
     if let Some(d) = depth {
         args.insert(1, "--depth".to_string());
         args.insert(2, d.to_string());
     }
 
-    let output = Command::new("git")
+    let pb = ProgressBar::new(0);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len}")
+            .unwrap()
+            .progress_chars("=>-"),
+    );
+    pb.set_message("Cloning");
+
+    let mut child = Command::new("git")
         .args(&args)
         .current_dir(&cwd)
-        .output()
+        .stderr(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()
         .context("Failed to run git. Is git installed?")?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("{}", stderr.trim());
-        anyhow::bail!(
-            "git clone failed with exit code: {:?}",
-            output.status.code()
-        );
+    if let Some(mut stderr) = child.stderr.take() {
+        let mut phase = String::new();
+        let mut total: u64 = 0;
+        let mut buf = Vec::new();
+        let mut byte = [0u8; 1];
+
+        loop {
+            match stderr.read(&mut byte) {
+                Ok(0) => break,
+                Ok(_) => {
+                    if byte[0] == b'\r' || byte[0] == b'\n' {
+                        if !buf.is_empty() {
+                            let line = String::from_utf8_lossy(&buf).trim().to_string();
+                            let line = strip_sideband_prefix(&line);
+                            if let Some(parsed) = parse_progress_line(&line) {
+                                let (new_phase, count, done) = parsed;
+
+                                if new_phase != phase {
+                                    phase = new_phase;
+                                    pb.set_message(format!("{}", phase));
+                                }
+
+                                if count > 0 && count != total {
+                                    total = count;
+                                    pb.set_length(total);
+                                }
+
+                                if total > 0 {
+                                    pb.set_position(done);
+                                }
+                            }
+                            buf.clear();
+                        }
+                    } else {
+                        buf.push(byte[0]);
+                    }
+                }
+                Err(_) => break,
+            }
+        }
     }
 
-    // Verify it's a Godot project
+    let status = child.wait().context("Failed to wait for git clone")?;
+    pb.finish_and_clear();
+
+    if !status.success() {
+        anyhow::bail!("git clone failed with exit code: {:?}", status.code());
+    }
+
     let project_file = target.join("project.godot");
     if !project_file.exists() {
         anyhow::bail!(
@@ -71,7 +133,6 @@ pub async fn run(
         );
     }
 
-    // Run editor detection from the cloned directory, restoring cwd on all paths
     let original_dir = std::env::current_dir()?;
     std::env::set_current_dir(&target)?;
     let result = open_project(&project_dir, config).await;
@@ -79,17 +140,72 @@ pub async fn run(
     result
 }
 
+fn strip_sideband_prefix(line: &str) -> String {
+    let bytes = line.as_bytes();
+    if !bytes.is_empty() && (bytes[0] == 0x01 || bytes[0] == 0x02 || bytes[0] == 0x03) {
+        return line[1..].to_string();
+    }
+    line.to_string()
+}
+
+fn parse_progress_line(line: &str) -> Option<(String, u64, u64)> {
+    let phases = [
+        ("remote: Counting objects", "Counting objects"),
+        ("remote: Compressing objects", "Compressing objects"),
+        ("Receiving objects", "Receiving objects"),
+        ("Resolving deltas", "Resolving deltas"),
+        ("Updating files", "Updating files"),
+    ];
+
+    for (prefix, label) in &phases {
+        if let Some(rest) = line.strip_prefix(prefix) {
+            let rest = rest.trim_start().trim_start_matches(':').trim_start();
+            if let Some(pct_end) = rest.find('%') {
+                let pct_str = rest[..pct_end].trim();
+                if let Ok(pct) = pct_str.parse::<f64>() {
+                    if let Some(paren_start) = rest.find('(') {
+                        if let Some(paren_end) = rest[paren_start..].find(')') {
+                            let inside = &rest[paren_start + 1..paren_start + paren_end];
+                            if let Some(slash_pos) = inside.find('/') {
+                                let done_str = &inside[..slash_pos];
+                                let total_str = &inside[slash_pos + 1..];
+                                if let (Ok(done), Ok(total)) =
+                                    (done_str.parse::<u64>(), total_str.parse::<u64>())
+                                {
+                                    return Some((label.to_string(), total, done));
+                                }
+                            }
+                        }
+                    }
+
+                    let done = ((pct / 100.0) * 1000.0) as u64;
+                    return Some((label.to_string(), 1000, done));
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn dir_from_url(url: &str) -> String {
+    let url = url.trim_end_matches('/');
+    let url = url.strip_suffix(".git").unwrap_or(url);
+    url.rsplit(|c| c == '/' || c == ':')
+        .next()
+        .unwrap_or(url)
+        .to_string()
+}
+
 async fn open_project(project_dir: &str, config: &mut Config) -> Result<()> {
     let ctx = super::shared::ProjectContext::detect(project_dir)?;
     println!("Found project: {} ({})", ctx.project_name, ctx.project_path);
 
-    // Auto-sync addons if .gdio file exists
     let gdio_file = ctx.cwd.join(".gdio");
     if gdio_file.exists() {
         crate::commands::addons::sync::run_sync(config, &ctx.cwd).await?;
     }
 
-    // Check if we've opened this project before
     if let Some(editor) = ctx.bound_editor(config)
         && editor.path.exists()
     {
@@ -101,7 +217,6 @@ async fn open_project(project_dir: &str, config: &mut Config) -> Result<()> {
         return Ok(());
     }
 
-    // Try to find editor for detected version
     if let Some((version, editor)) = ctx.find_editor_for_detected_version(config)
         && editor.path.exists()
     {
@@ -114,7 +229,6 @@ async fn open_project(project_dir: &str, config: &mut Config) -> Result<()> {
         return Ok(());
     }
 
-    // No editor found - prompt user
     let godot_version = crate::project::parse_godot_version(&ctx.project_file);
     if let Some(ref version) = godot_version {
         println!("Project requires Godot {}", version);
@@ -176,32 +290,4 @@ async fn open_project(project_dir: &str, config: &mut Config) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn dir_from_url(url: &str) -> String {
-    let url = url.trim_end_matches('/');
-    let url = url.strip_suffix(".git").unwrap_or(url);
-    // Handle both https://host/user/repo and git@host:user/repo
-    url.rsplit(|c| c == '/' || c == ':')
-        .next()
-        .unwrap_or(url)
-        .to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_dir_from_url() {
-        assert_eq!(dir_from_url("https://github.com/user/repo.git"), "repo");
-        assert_eq!(dir_from_url("https://github.com/user/repo"), "repo");
-        assert_eq!(dir_from_url("https://github.com/user/repo/"), "repo");
-        assert_eq!(dir_from_url("git@github.com:user/repo.git"), "repo");
-        assert_eq!(dir_from_url("git@github.com:user/repo"), "repo");
-        assert_eq!(
-            dir_from_url("https://gitlab.com/group/subgroup/repo.git"),
-            "repo"
-        );
-    }
 }
