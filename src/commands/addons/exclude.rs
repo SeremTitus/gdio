@@ -166,6 +166,9 @@ fn run_exclude_interactive(config: &mut Config, project_path: &str) -> Result<()
         return Ok(());
     }
 
+    crate::commands::shared::require_interactive(
+        "Addon selection required. Run `gdio addon exclude <addon>`.",
+    )?;
     let idx = dialoguer::Select::new()
         .with_prompt("Select addon to exclude from this project")
         .items(&items)
@@ -242,6 +245,9 @@ fn run_revert_interactive(config: &mut Config, project_path: &str) -> Result<()>
         .map(|(ident, ver)| format!("{} v{}", ident, ver))
         .collect();
 
+    crate::commands::shared::require_interactive(
+        "Addon selection required. Run `gdio addon exclude <addon> --revert`.",
+    )?;
     let idx = dialoguer::Select::new()
         .with_prompt("Select addon to un-exclude from this project")
         .items(&items)

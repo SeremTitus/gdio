@@ -45,15 +45,23 @@ pub async fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             println!("Project: {}", ctx.project_name);
 
             let editors: Vec<_> = config.editors.values().cloned().collect();
-            let names: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
 
-            let idx = dialoguer::FuzzySelect::new()
-                .with_prompt("Select editor to bind to this project")
-                .items(&names)
-                .default(0)
-                .interact()?;
+            if editors.len() == 1 {
+                editors.into_iter().next().unwrap()
+            } else {
+                crate::commands::shared::require_interactive(
+                    "Editor selection required. Run `gdio bind <editor-name/version>` to bind by name.",
+                )?;
+                let names: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
 
-            editors[idx].clone()
+                let idx = dialoguer::FuzzySelect::new()
+                    .with_prompt("Select editor to bind to this project")
+                    .items(&names)
+                    .default(0)
+                    .interact()?;
+
+                editors[idx].clone()
+            }
         }
     };
 

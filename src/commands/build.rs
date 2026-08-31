@@ -153,28 +153,20 @@ async fn ensure_templates(version: &str, platform: &str, csharp: bool) -> Result
         }
     }
 
-    println!("Export templates for {} {} not found.", version, platform);
-    let download = dialoguer::Confirm::new()
-        .with_prompt(format!(
-            "Download {} templates for Godot {}?",
-            platform, version
-        ))
-        .default(true)
-        .interact()?;
-
-    if download {
-        std::fs::create_dir_all(&godot_dir)?;
-        // Use templates add instead
-        let client = reqwest::Client::builder().user_agent("gdio").build()?;
-        crate::commands::templates::api::download_template_files(
-            &client,
-            version,
-            platform,
-            csharp,
-            godot_dir.as_path(),
-        )
-        .await?;
-    }
+    println!(
+        "Export templates for {} {} not found. Downloading...",
+        version, platform
+    );
+    std::fs::create_dir_all(&godot_dir)?;
+    let client = reqwest::Client::builder().user_agent("gdio").build()?;
+    crate::commands::templates::api::download_template_files(
+        &client,
+        version,
+        platform,
+        csharp,
+        godot_dir.as_path(),
+    )
+    .await?;
 
     Ok(())
 }

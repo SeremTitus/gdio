@@ -27,6 +27,9 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
                 }
                 1 => matching[0].clone(),
                 _ => {
+                    crate::commands::shared::require_interactive(
+                        "Multiple matches found. Specify the exact editor version to remove.",
+                    )?;
                     let names: Vec<String> = matching
                         .iter()
                         .filter_map(|k| config.editors.get(k))
@@ -42,6 +45,9 @@ pub fn run(target: Option<&str>, config: &mut Config) -> Result<()> {
             }
         }
         None => {
+            crate::commands::shared::require_interactive(
+                "No editor specified. Run `gdio remove <editor-name>` to remove by name.",
+            )?;
             // Interactive: show all editors
             let editors: Vec<_> = config.editors.iter().collect();
             let names: Vec<String> = editors

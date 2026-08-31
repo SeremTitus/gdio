@@ -71,6 +71,9 @@ pub async fn run(name: &str, config: &mut Config) -> Result<()> {
     }
 
     // Select renderer
+    crate::commands::shared::require_interactive(
+        "Renderer selection required. Run `gdio new <name>` interactively to choose a renderer.",
+    )?;
     let renderers = Renderer::all();
     let renderer_names: Vec<String> = renderers.iter().map(ToString::to_string).collect();
     let idx = dialoguer::FuzzySelect::new()

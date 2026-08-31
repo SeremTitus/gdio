@@ -53,6 +53,9 @@ pub async fn run(config: &mut Config) -> Result<()> {
         })
         .collect();
 
+    crate::commands::shared::require_interactive(
+        "Project selection required. Run `gdio` from the project directory to open it.",
+    )?;
     let selection = dialoguer::FuzzySelect::new()
         .items(&items)
         .default(0)

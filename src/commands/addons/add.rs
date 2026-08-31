@@ -77,6 +77,9 @@ pub async fn run(config: &mut Config, identifier: &str, linked: bool, select: bo
                 format!("v{} [{}]{}", release.version, repo_name, marker)
             })
             .collect();
+        crate::commands::shared::require_interactive(
+            "Version selection required. Run `gdio addon add` interactively to choose a version.",
+        )?;
         let idx = dialoguer::Select::new()
             .with_prompt(format!("Select version for {}", identifier))
             .items(&items)

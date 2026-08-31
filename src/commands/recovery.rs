@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::gdre;
 use anyhow::{Context, Result};
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -77,12 +78,16 @@ pub async fn run(output: Option<&str>, config: &mut Config) -> Result<()> {
                     .to_string()
             })
             .collect();
-        let idx = dialoguer::FuzzySelect::new()
-            .with_prompt("Multiple recoverable files found. Select one")
-            .items(&names)
-            .default(0)
-            .interact()?;
-        recover_files[idx].clone()
+        if std::io::stdin().is_terminal() {
+            let idx = dialoguer::FuzzySelect::new()
+                .with_prompt("Multiple recoverable files found. Select one")
+                .items(&names)
+                .default(0)
+                .interact()?;
+            recover_files[idx].clone()
+        } else {
+            recover_files.into_iter().next().unwrap()
+        }
     };
 
     let output_path = match output {
