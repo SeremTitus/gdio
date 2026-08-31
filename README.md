@@ -140,25 +140,19 @@ Downloads export templates on-demand if not found. Templates are stored in Godot
 Upload the current project to itch.io using [butler](https://itch.io/docs/butler/). Automatically builds the project first, then uploads each platform to its configured channel.
 
 ```bash
-gdio up --setup                               # interactive setup (butler path, game ID)
+gdio up setup myuser/mygame                   # configure game identifier for itch.io upload
 gdio up                                       # build + upload all configured platforms
 gdio up --windows                             # build + upload Windows only
 gdio up --linux --web                         # build + upload Linux + Web
 gdio up --name                                # interactive channel name customization per platform
 ```
+First run `gdio up setup <Game identifier>`, game identifier is your itch.io project in `user/game` format (e.g. `myuser/mygame`)
 
 Platforms: `--windows`, `--linux`, `--web`, `--macos`, `--ios`, `--android`, `--visionos`
 
 Export debug flag : `--debug`/`-d`
 
 Custom channel name flag : `--name`/`-n` (default channel: `{platform}-v{version}`)
-
-#### Setup
-
-Run `gdio up --setup` from a Godot project directory to configure itch.io upload settings:
-
-1. **Butler path**: enter path [butler](https://itch.io/docs/butler/).
-2. **Game identifier**: your itch.io project in `user/game` format (e.g. `myuser/mygame`)
 
 ### `gdio templates`
 

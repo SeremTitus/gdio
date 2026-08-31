@@ -283,19 +283,15 @@ async fn download_and_extract_butler(
 }
 
 pub async fn run(
-    setup: bool,
     platform: &PlatformFlags,
     debug: bool,
     name: bool,
     config: &mut Config,
 ) -> Result<()> {
-    if setup {
-        return run_setup(config).await;
-    }
     run_upload(platform, debug, name, config).await
 }
 
-async fn run_setup(config: &mut Config) -> Result<()> {
+pub async fn run_setup_with_game(game: &str, config: &mut Config) -> Result<()> {
     let ctx = super::shared::ProjectContext::detect("game")?;
 
     println!("=== itch.io upload setup ===\n");
@@ -310,16 +306,17 @@ async fn run_setup(config: &mut Config) -> Result<()> {
         );
     }
 
-    let game: String = dialoguer::Input::new()
-        .with_prompt("itch.io game identifier (user/game)")
-        .interact_text()?;
-
     if !game.contains('/') {
         anyhow::bail!("Game identifier must be in 'user/game' format (e.g. 'myuser/mygame').");
     }
 
     let itch_config = config.get_or_default_itch();
-    itch_config.set_project(&ctx.project_path, crate::config::ItchProjectConfig { game });
+    itch_config.set_project(
+        &ctx.project_path,
+        crate::config::ItchProjectConfig {
+            game: game.to_string(),
+        },
+    );
     config.save()?;
 
     println!("\n✓ itch.io upload configured for this project.");
