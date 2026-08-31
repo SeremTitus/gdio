@@ -12,6 +12,17 @@ pub fn run(keep: bool) -> Result<()> {
 
     println!("Uninstalling gdio...");
 
+    let gdre_tools_dir = Config::get_gdre_tools_dir();
+    if gdre_tools_dir.exists() {
+        fs::remove_dir_all(&gdre_tools_dir)?;
+    }
+
+    let butler_dir = Config::get_butler_dir();
+    if butler_dir.exists() {
+        fs::remove_dir_all(&butler_dir)?;
+        println!("Removed butler: {}", butler_dir.display());
+    }
+
     // Remove config directory
     if config_dir.exists() {
         if keep {
