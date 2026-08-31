@@ -53,6 +53,9 @@ pub fn run(config: &mut Config, identifiers: &[String]) -> Result<()> {
             })
             .collect();
 
+        crate::commands::shared::require_interactive(
+            "Addon selection required. Run `gdio addon remove` interactively to choose an addon.",
+        )?;
         let idx = dialoguer::Select::new()
             .with_prompt("Select addon to remove")
             .items(&items)

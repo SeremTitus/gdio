@@ -1,8 +1,19 @@
 use crate::config::{Config, EditorInfo};
 use crate::project;
 use anyhow::{Context, Result};
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+pub fn require_interactive(hint: &str) -> Result<()> {
+    if !std::io::stdin().is_terminal() {
+        anyhow::bail!(
+            "Interactive prompt required but stdin is not a terminal.\n{}",
+            hint
+        );
+    }
+    Ok(())
+}
 
 pub struct ProjectContext {
     pub cwd: PathBuf,
@@ -88,6 +99,7 @@ pub async fn resolve_editor(config: &mut Config, bound_editor: Option<&str>) -> 
     match editor {
         Some(e) => Ok(e),
         None => {
+            require_interactive("Run `gdio add <version>` to install an editor first.")?;
             let mut options: Vec<String> =
                 config.editors.values().map(|e| e.name.clone()).collect();
             options.push("[add editor]".to_string());

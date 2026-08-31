@@ -194,6 +194,9 @@ impl Drop for CleanupGuard {
 }
 
 pub async fn run(query: &str, config: &Config) -> Result<()> {
+    crate::commands::shared::require_interactive(
+        "Addon search requires an interactive terminal (TUI).",
+    )?;
     let client = reqwest::Client::builder().user_agent("gdio").build()?;
     let repos = &config.addons.repositories;
 

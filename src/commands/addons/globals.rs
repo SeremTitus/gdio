@@ -141,6 +141,9 @@ async fn run_add(config: &mut Config, identifier: &str, select: bool, linked: bo
                 format!("v{} [{}]{}", release.version, repo_name, marker)
             })
             .collect();
+        crate::commands::shared::require_interactive(
+            "Version selection required. Run `gdio addon globals` interactively to choose a version.",
+        )?;
         let idx = dialoguer::Select::new()
             .with_prompt(format!("Select version for {}", identifier))
             .items(&items)
@@ -223,6 +226,9 @@ fn run_remove(config: &mut Config) -> Result<()> {
         .map(|(ident, info)| format!("{} v{}", ident, info.version.as_deref().unwrap_or("latest")))
         .collect();
 
+    crate::commands::shared::require_interactive(
+        "Addon selection required. Run `gdio addon globals <addon> --remove`.",
+    )?;
     let idx = dialoguer::Select::new()
         .with_prompt("Select global addon to stop syncing")
         .items(&items)

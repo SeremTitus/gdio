@@ -362,6 +362,9 @@ async fn run_upload(
     {
         Some(p) => p.clone(),
         None => {
+            crate::commands::shared::require_interactive(
+                "itch.io game not configured. Run `gdio up setup <user/game>`.",
+            )?;
             println!();
             let game: String = dialoguer::Input::new()
                 .with_prompt("itch.io game identifier (user/game)")
@@ -429,6 +432,9 @@ async fn run_upload(
         let preset = if presets_for.len() == 1 {
             presets_for[0]
         } else {
+            crate::commands::shared::require_interactive(
+                "Multiple export presets found. Run `gdio up` interactively to select one.",
+            )?;
             let names: Vec<String> = presets_for.iter().map(|p| p.name.clone()).collect();
             let idx = dialoguer::Select::new()
                 .with_prompt(format!("Multiple presets for {}, select one", platform))
@@ -456,6 +462,9 @@ async fn run_upload(
             "{}",
             blue.apply_to("Project Settings: application/config/version is not set.")
         );
+        crate::commands::shared::require_interactive(
+            "Game version not set in project.godot. Set version in project.godot.",
+        )?;
         let input: String = dialoguer::Input::new()
             .with_prompt("Game version for upload")
             .default("0.1.0-dev".to_string())
@@ -472,6 +481,9 @@ async fn run_upload(
     for platform in &platforms {
         let default_channel = format!("{}-v{}", platform, game_version_display);
         let channel = if name {
+            crate::commands::shared::require_interactive(
+                "Channel name selection required. Run `gdio up` interactively or omit `--name`.",
+            )?;
             let input: String = dialoguer::Input::new()
                 .with_prompt(format!("Channel name for {}", platform))
                 .default(default_channel.clone())

@@ -42,57 +42,19 @@ pub async fn run(config: &mut Config) -> Result<()> {
     let godot_version = crate::project::parse_godot_version(&ctx.project_file);
     if let Some(ref version) = godot_version {
         println!("Project requires Godot {}", version);
-        println!("Godot {} editor not found.", version);
-        let options = vec![
-            "Open with existing editor".to_string(),
-            format!("Download Godot {}", version),
-        ];
+        println!("Godot {} editor not found. Downloading...", version);
+        crate::commands::add::download_version_auto(version, false, config).await?;
 
-        let selection = dialoguer::FuzzySelect::new()
-            .with_prompt("What would you like to do?")
-            .items(&options)
-            .default(0)
-            .interact()?;
-
-        match selection {
-            0 => {
-                let editors: Vec<_> = config.editors.values().cloned().collect();
-                if editors.is_empty() {
-                    println!("No editors installed. Use `gdio add` to install one.");
-                    return Ok(());
-                }
-                let names: Vec<String> = editors.iter().map(|e| e.name.clone()).collect();
-                let idx = dialoguer::FuzzySelect::new()
-                    .with_prompt("Select editor")
-                    .items(&names)
-                    .default(0)
-                    .interact()?;
-                let editor = &editors[idx];
-                godot::open_project_editor_mode(&editor.path, &ctx.project_file)?;
-                super::shared::register_opened_project(
-                    config,
-                    ctx.cwd,
-                    ctx.project_name,
-                    &editor.version,
-                )?;
-            }
-            1 => {
-                let version = version.clone();
-                crate::commands::add::download_version_auto(&version, false, config).await?;
-
-                if let Some(editor) = config.find_editor_for_version(&version) {
-                    let editor_path = editor.path.clone();
-                    let editor_version = editor.version.clone();
-                    godot::open_project_editor_mode(&editor_path, &ctx.project_file)?;
-                    super::shared::register_opened_project(
-                        config,
-                        ctx.cwd,
-                        ctx.project_name,
-                        &editor_version,
-                    )?;
-                }
-            }
-            _ => {}
+        if let Some(editor) = config.find_editor_for_version(version) {
+            let editor_path = editor.path.clone();
+            let editor_version = editor.version.clone();
+            godot::open_project_editor_mode(&editor_path, &ctx.project_file)?;
+            super::shared::register_opened_project(
+                config,
+                ctx.cwd,
+                ctx.project_name,
+                &editor_version,
+            )?;
         }
     } else {
         println!("Could not determine Godot version from project.godot");

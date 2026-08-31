@@ -2,6 +2,7 @@ use crate::config::{self, Config, EditorInfo, EditorSource};
 use crate::github;
 use anyhow::Result;
 use console::Style;
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -206,12 +207,30 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
         .to_string();
 
     let editor_name = loop {
-        let input: String = dialoguer::Input::new()
-            .with_prompt("Editor name")
-            .default(default_name.clone())
-            .interact_text()?;
+        let input: String = if std::io::stdin().is_terminal() {
+            dialoguer::Input::new()
+                .with_prompt("Editor name")
+                .default(default_name.clone())
+                .interact_text()?
+        } else {
+            // In non-interactive mode, append a suffix if name is taken
+            let mut name = default_name.clone();
+            let mut counter = 2;
+            while config.editors.values().any(|e| e.name == name) {
+                name = format!("{}-{}", default_name, counter);
+                counter += 1;
+            }
+            name
+        };
 
         if let Some(existing) = config.editors.values().find(|e| e.name == input) {
+            if !std::io::stdin().is_terminal() {
+                anyhow::bail!(
+                    "Editor name '{}' is already registered ({}).",
+                    input,
+                    existing.path.display()
+                );
+            }
             let source = if existing.source == EditorSource::Local {
                 "local"
             } else {
