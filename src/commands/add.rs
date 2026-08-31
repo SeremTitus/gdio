@@ -45,7 +45,6 @@ pub fn parse_version_arg(arg: &str) -> (String, Option<String>) {
 fn register_downloaded_editor(
     exe_path: PathBuf,
     version_key: &str,
-    is_mono: bool,
     csharp: bool,
     config: &mut Config,
 ) -> Result<Option<EditorInfo>> {
@@ -66,11 +65,17 @@ fn register_downloaded_editor(
         format!("Godot v{}", version_key)
     };
 
+    let version = if csharp {
+        format!("{}.mono", version_key.replace('-', "."))
+    } else {
+        version_key.replace('-', ".")
+    };
+
     let editor = EditorInfo {
         name: editor_name,
         path: exe_path,
-        version: version_key.to_string(),
-        is_mono: csharp || is_mono,
+        version,
+        is_mono: csharp,
         source: EditorSource::Downloaded,
     };
 
@@ -109,13 +114,13 @@ pub async fn download_version(
             );
             return Ok(None);
         }
-        return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
+        return register_downloaded_editor(exe_path, &version_key, csharp, config);
     }
 
     let (exe_path, _stage) =
         github::download_and_extract_editor(version, stage, csharp, &dest_dir).await?;
 
-    register_downloaded_editor(exe_path, &version_key, false, csharp, config)
+    register_downloaded_editor(exe_path, &version_key, csharp, config)
 }
 
 pub async fn download_version_auto(
@@ -171,14 +176,14 @@ pub async fn download_version_auto(
             return Ok(None);
         }
         // Register existing executable
-        return register_downloaded_editor(exe_path, &version_key, false, csharp, config);
+        return register_downloaded_editor(exe_path, &version_key, csharp, config);
     }
 
     let (exe_path, stage) =
         github::download_and_extract_editor_auto(version, csharp, &dest_dir).await?;
 
     let version_key = format!("{}-{}", version, stage);
-    register_downloaded_editor(exe_path, &version_key, false, csharp, config)
+    register_downloaded_editor(exe_path, &version_key, csharp, config)
 }
 
 fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorInfo>> {
@@ -199,6 +204,15 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
             }
         })
         .map_err(|e| anyhow::anyhow!("Failed to run `{} --version`: {}", path.display(), e))?;
+
+    let is_mono = version.contains(".mono");
+    let cleaned = version.replace(".mono", "");
+    let (base_version, flavor) = config::parse_version_flavor(&cleaned);
+    let version = if is_mono {
+        format!("{}.{}.mono", base_version, flavor)
+    } else {
+        format!("{}.{}", base_version, flavor)
+    };
 
     let default_name = path
         .file_stem()
@@ -254,7 +268,7 @@ fn register_local(path_str: &str, config: &mut Config) -> Result<Option<EditorIn
         name: editor_name,
         path: path.clone(),
         version,
-        is_mono: false,
+        is_mono,
         source: EditorSource::Local,
     };
 

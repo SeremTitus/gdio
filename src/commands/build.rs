@@ -1,4 +1,4 @@
-use crate::config::{self, Config};
+use crate::config::{self, Config, EditorSource};
 use crate::platform::PlatformFlags;
 use crate::project;
 use anyhow::{Context, Result};
@@ -71,7 +71,9 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
             continue;
         }
 
-        ensure_templates(&godot_version, preset_platform, editor.is_mono).await?;
+        if editor.source != EditorSource::Local {
+            ensure_templates(&godot_version, preset_platform, editor.is_mono).await?;
+        }
     }
 
     let mut output_paths = Vec::new();
