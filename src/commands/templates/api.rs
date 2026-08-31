@@ -43,10 +43,16 @@ pub async fn fetch_mirror_url(
     client: &reqwest::Client,
     base_version: &str,
     flavor: &str,
+    csharp: bool,
 ) -> Result<String> {
+    let flavor_str = if csharp {
+        format!("{}.mono", flavor)
+    } else {
+        flavor.to_string()
+    };
     let mirror_list_url = format!(
         "https://godotengine.org/mirrorlist/{}.{}.json",
-        base_version, flavor
+        base_version, flavor_str
     );
     let resp = client
         .get(&mirror_list_url)
@@ -417,11 +423,12 @@ pub async fn download_template_files(
     client: &reqwest::Client,
     version: &str,
     platform: &str,
+    csharp: bool,
     dest: &Path,
 ) -> Result<()> {
     let (base_version, flavor) = crate::config::parse_version_flavor(version);
 
-    let mirror_url = fetch_mirror_url(client, base_version, flavor).await?;
+    let mirror_url = fetch_mirror_url(client, base_version, flavor, csharp).await?;
     println!("Using mirror: {}", mirror_url);
 
     let files = crate::github::platform_template_files(platform);
