@@ -73,10 +73,14 @@ impl Config {
             dirs::config_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
                 .join("Godot")
-        } else {
+        } else if cfg!(target_os = "macos") {
             dirs::data_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
                 .join("Godot")
+        } else {
+            dirs::data_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("godot")
         }
     }
 
