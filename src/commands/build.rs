@@ -1,3 +1,4 @@
+use crate::commands::templates;
 use crate::config::{self, Config, EditorSource};
 use crate::platform::PlatformFlags;
 use crate::project;
@@ -72,7 +73,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
         }
 
         if editor.source != EditorSource::Local {
-            ensure_templates(&godot_version, preset_platform, editor.is_mono).await?;
+            ensure_templates(&godot_version, preset_platform, editor.is_mono, debug).await?;
         }
     }
 
@@ -140,7 +141,7 @@ pub async fn run(platform: &PlatformFlags, debug: bool, config: &Config) -> Resu
     Ok(())
 }
 
-async fn ensure_templates(version: &str, platform: &str, csharp: bool) -> Result<()> {
+async fn ensure_templates(version: &str, platform: &str, csharp: bool, debug: bool) -> Result<()> {
     let (base_version, flavor) = config::parse_version_flavor(version);
     let godot_dir = Config::get_godot_templates_dir().join(if csharp {
         format!("{}.{}.mono", base_version, flavor)
@@ -149,8 +150,18 @@ async fn ensure_templates(version: &str, platform: &str, csharp: bool) -> Result
     });
 
     if godot_dir.exists() {
-        let platforms = crate::commands::templates::list::detect_platforms(godot_dir.as_path())?;
-        if platforms.contains(&platform.to_string()) {
+        let platforms = crate::commands::templates::list::get_installed_files(godot_dir.as_path())?;
+
+        let template_filter = if debug {
+            templates::api::TemplateFilter::Debug
+        } else {
+            templates::api::TemplateFilter::Release
+        };
+
+        let required =
+            templates::api::platform_template_files(&platform.to_string(), template_filter);
+
+        if required.iter().all(|item| platforms.contains(*item)) {
             return Ok(());
         }
     }
@@ -167,6 +178,7 @@ async fn ensure_templates(version: &str, platform: &str, csharp: bool) -> Result
         platform,
         csharp,
         godot_dir.as_path(),
+        debug,
     )
     .await?;
 

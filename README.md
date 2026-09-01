@@ -163,9 +163,13 @@ gdio templates list                           # show installed templates + varia
 gdio templates add 4.7                        # download all platforms
 gdio templates add 4.7 --windows --web        # download specific platforms
 gdio templates add 4.7 --csharp               # download C# (mono) templates
+gdio templates add 4.7 --debug                # download debug templates only
+gdio templates add 4.7 --release              # download release templates only
 gdio templates remove 4.7                     # remove all templates
 gdio templates remove 4.7 --web               # remove only web templates
 ```
+
+`--debug`/`-d` and `--release`/`-r` are mutually exclusive flags for filtering template variants.
 
 Templates are stored where Godot expects them:
 - Windows: `%APPDATA%/Godot/export_templates/`

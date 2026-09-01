@@ -2,35 +2,6 @@ use crate::config::Config;
 use anyhow::Result;
 use std::path::Path;
 
-pub fn detect_platforms(dir: &Path) -> Result<Vec<String>> {
-    let installed = get_installed_files(dir)?;
-    let mut platforms = Vec::new();
-
-    if installed.iter().any(|f| f.starts_with("windows_")) {
-        platforms.push("windows".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("linux_")) {
-        platforms.push("linux".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("macos")) {
-        platforms.push("macos".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("web_")) {
-        platforms.push("web".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("ios")) {
-        platforms.push("ios".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("android")) {
-        platforms.push("android".to_string());
-    }
-    if installed.iter().any(|f| f.starts_with("visionos")) {
-        platforms.push("visionos".to_string());
-    }
-
-    Ok(platforms)
-}
-
 pub fn run(_config: &Config) -> Result<()> {
     let godot_dir = Config::get_godot_templates_dir();
 

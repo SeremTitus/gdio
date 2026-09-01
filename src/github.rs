@@ -195,54 +195,6 @@ pub fn find_editor_asset(release: &GitHubRelease, is_mono: bool) -> Option<&GitH
     })
 }
 
-pub fn platform_template_files(platform: &str) -> Vec<&'static str> {
-    match platform {
-        "windows" => vec![
-            "windows_debug_x86_32.exe",
-            "windows_debug_x86_32_console.exe",
-            "windows_release_x86_32.exe",
-            "windows_release_x86_32_console.exe",
-            "windows_debug_x86_64.exe",
-            "windows_debug_x86_64_console.exe",
-            "windows_release_x86_64.exe",
-            "windows_release_x86_64_console.exe",
-            "windows_debug_arm64.exe",
-            "windows_debug_arm64_console.exe",
-            "windows_release_arm64.exe",
-            "windows_release_arm64_console.exe",
-        ],
-        "linux" => vec![
-            "linux_debug.x86_32",
-            "linux_release.x86_32",
-            "linux_debug.x86_64",
-            "linux_release.x86_64",
-            "linux_debug.arm32",
-            "linux_release.arm32",
-            "linux_debug.arm64",
-            "linux_release.arm64",
-        ],
-        "macos" => vec!["macos.zip"],
-        "web" => vec![
-            "web_debug.zip",
-            "web_release.zip",
-            "web_dlink_debug.zip",
-            "web_dlink_release.zip",
-            "web_nothreads_debug.zip",
-            "web_nothreads_release.zip",
-            "web_dlink_nothreads_debug.zip",
-            "web_dlink_nothreads_release.zip",
-        ],
-        "ios" => vec!["ios.zip"],
-        "visionos" => vec!["visionos.zip"],
-        "android" => vec![
-            "android_debug.apk",
-            "android_release.apk",
-            "android_source.zip",
-        ],
-        _ => vec![],
-    }
-}
-
 pub async fn download_file(url: &str, dest: &Path) -> Result<()> {
     let client = github_client()?;
 

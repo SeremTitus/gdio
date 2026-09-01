@@ -1,12 +1,13 @@
+use crate::commands::templates;
 use crate::config::{self, Config};
-use crate::github;
 use crate::platform::PlatformFlags;
 use anyhow::Result;
 use console::Style;
 use indicatif::{MultiProgress, ProgressBar};
 use std::path::Path;
 
-use super::{api, list};
+use templates::api::TemplateFilter;
+use templates::list;
 
 async fn download_modern_templates(
     client: &reqwest::Client,
@@ -15,8 +16,9 @@ async fn download_modern_templates(
     csharp: bool,
     to_download: &[&str],
     godot_dir: &Path,
+    template_filter: TemplateFilter,
 ) -> Result<()> {
-    let mirror_url = api::fetch_mirror_url(client, base_version, flavor, csharp).await?;
+    let mirror_url = templates::api::fetch_mirror_url(client, base_version, flavor, csharp).await?;
     println!("Using mirror: {}", mirror_url);
 
     let mp = MultiProgress::new();
@@ -31,7 +33,7 @@ async fn download_modern_templates(
     let mut all_tasks = Vec::new();
 
     for platform in to_download {
-        let files = github::platform_template_files(platform);
+        let files = templates::api::platform_template_files(platform, template_filter);
         for filename in files {
             let skipped = godot_dir.join(filename).exists();
             all_tasks.push(FileTask {
@@ -55,14 +57,14 @@ async fn download_modern_templates(
 
     let to_download_tasks: Vec<_> = all_tasks.into_iter().filter(|t| !t.skipped).collect();
     let overall_pb = mp.add(ProgressBar::new(to_download_tasks.len() as u64));
-    overall_pb.set_style(api::progress_style_overall());
+    overall_pb.set_style(templates::api::progress_style_overall());
     overall_pb.set_message("Downloading templates");
 
     let files: Vec<&str> = to_download_tasks
         .iter()
         .map(|t| t.filename.as_ref())
         .collect();
-    let results = api::download_files_concurrent(
+    let results = templates::api::download_files_concurrent(
         client,
         &mirror_url,
         &files,
@@ -118,8 +120,21 @@ pub async fn run(
     version: &str,
     platform: &PlatformFlags,
     csharp: bool,
+    debug: bool,
+    release: bool,
     _config: &mut Config,
 ) -> Result<()> {
+    if debug && release {
+        anyhow::bail!("only use one --debug/-d or --release/-r flag at a time");
+    }
+    let template_filter = if debug {
+        TemplateFilter::Debug
+    } else if release {
+        TemplateFilter::Release
+    } else {
+        TemplateFilter::All
+    };
+
     let (base_version, flavor) = config::parse_version_flavor(version);
 
     // Check if this is a pre-4.x version (full .tpz download)
@@ -154,7 +169,7 @@ pub async fn run(
         let installed = list::get_installed_files(godot_dir.as_path())?;
         let mut exist = Vec::new();
         for platform in &platforms {
-            let files = github::platform_template_files(platform);
+            let files = templates::api::platform_template_files(platform, template_filter);
             if files.iter().all(|f| installed.contains(*f)) {
                 exist.push(platform.as_ref());
             }
@@ -197,7 +212,7 @@ pub async fn run(
             base_version, flavor, slug
         );
         println!("Using URL: {}", tpz_url);
-        api::download_full_tpz(&client, &tpz_url, &godot_dir).await?;
+        templates::api::download_full_tpz(&client, &tpz_url, &godot_dir).await?;
     } else {
         // 4.x+: download individual files via mirror
         download_modern_templates(
@@ -207,6 +222,7 @@ pub async fn run(
             csharp,
             &to_download,
             &godot_dir,
+            template_filter,
         )
         .await?;
     }

@@ -292,6 +292,14 @@ enum TemplatesAction {
         /// Download C# (mono) export templates
         #[arg(short, long)]
         csharp: bool,
+
+        /// Download the debug only export templates
+        #[arg(short, long)]
+        debug: bool,
+
+        /// Download the release only export templates
+        #[arg(short, long)]
+        release: bool,
     },
 
     /// Remove export templates for a version
@@ -561,9 +569,18 @@ async fn main() -> anyhow::Result<()> {
                     godot_version,
                     platform,
                     csharp,
+                    debug,
+                    release,
                 }) => {
-                    commands::templates::add::run(&godot_version, &platform, csharp, &mut config)
-                        .await?;
+                    commands::templates::add::run(
+                        &godot_version,
+                        &platform,
+                        csharp,
+                        debug,
+                        release,
+                        &mut config,
+                    )
+                    .await?;
                 }
                 Some(TemplatesAction::Remove {
                     godot_version,

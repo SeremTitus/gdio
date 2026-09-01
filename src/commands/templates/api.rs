@@ -7,6 +7,78 @@ use tokio::io::AsyncWriteExt;
 
 use super::storage;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TemplateFilter {
+    All,
+    Debug,
+    Release,
+}
+
+pub fn platform_template_files(platform: &str, filter: TemplateFilter) -> Vec<&'static str> {
+    let files: &[&'static str] = match platform {
+        "windows" => &[
+            "windows_debug_x86_32.exe",
+            "windows_debug_x86_32_console.exe",
+            "windows_release_x86_32.exe",
+            "windows_release_x86_32_console.exe",
+            "windows_debug_x86_64.exe",
+            "windows_debug_x86_64_console.exe",
+            "windows_release_x86_64.exe",
+            "windows_release_x86_64_console.exe",
+            "windows_debug_arm64.exe",
+            "windows_debug_arm64_console.exe",
+            "windows_release_arm64.exe",
+            "windows_release_arm64_console.exe",
+        ],
+
+        "linux" => &[
+            "linux_debug.x86_32",
+            "linux_release.x86_32",
+            "linux_debug.x86_64",
+            "linux_release.x86_64",
+            "linux_debug.arm32",
+            "linux_release.arm32",
+            "linux_debug.arm64",
+            "linux_release.arm64",
+        ],
+
+        "macos" => &["macos.zip"],
+
+        "web" => &[
+            "web_debug.zip",
+            "web_release.zip",
+            "web_dlink_debug.zip",
+            "web_dlink_release.zip",
+            "web_nothreads_debug.zip",
+            "web_nothreads_release.zip",
+            "web_dlink_nothreads_debug.zip",
+            "web_dlink_nothreads_release.zip",
+        ],
+
+        "ios" => &["ios.zip"],
+
+        "visionos" => &["visionos.zip"],
+
+        "android" => &[
+            "android_debug.apk",
+            "android_release.apk",
+            "android_source.zip",
+        ],
+
+        _ => &[],
+    };
+
+    files
+        .iter()
+        .copied()
+        .filter(|file| match filter {
+            TemplateFilter::All => true,
+            TemplateFilter::Debug => !file.contains("_release"),
+            TemplateFilter::Release => !file.contains("_debug"),
+        })
+        .collect()
+}
+
 // Size of tail to read for Central Directory search (64KB)
 const ZIP_CD_SEARCH_SIZE: u64 = 0x10000;
 // Extra buffer for ZIP64 extended info in local header
@@ -425,13 +497,20 @@ pub async fn download_template_files(
     platform: &str,
     csharp: bool,
     dest: &Path,
+    debug: bool,
 ) -> Result<()> {
     let (base_version, flavor) = crate::config::parse_version_flavor(version);
 
     let mirror_url = fetch_mirror_url(client, base_version, flavor, csharp).await?;
     println!("Using mirror: {}", mirror_url);
 
-    let files = crate::github::platform_template_files(platform);
+    let debug_filter = if debug {
+        TemplateFilter::Debug
+    } else {
+        TemplateFilter::Release
+    };
+
+    let files = platform_template_files(platform, debug_filter);
     println!("\n{}:", platform);
 
     let skipped: std::collections::HashSet<&'static str> = files
