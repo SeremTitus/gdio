@@ -220,15 +220,10 @@ ASCII_ART='
                           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                         
                                  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                              '
 
-IFS=$'\n' read -r -d '' -a art_lines <<< "$ASCII_ART"
-max_width=0
-for line in "${art_lines[@]}"; do
-    (( ${#line} > max_width )) && max_width=${#line}
-done
 term_width=$(tput cols 2>/dev/null || echo 80)
-for line in "${art_lines[@]}"; do
+while IFS= read -r line; do
     printf "%*s\n" $(( (term_width + ${#line}) / 2 )) "$line"
-done
+done <<< "$ASCII_ART"
 
 echo ""
 echo -e "${GREEN}Successfully installed gdio v${specific_version}!${NC}"
