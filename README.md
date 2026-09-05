@@ -304,6 +304,46 @@ Addons marked as global are synced to all projects unless excluded. Use `gdio ad
 - **`--linked` / `-l`**: Store the addon in the global cache and symlink it into each project during sync (instead of copying).
 - **`--select` / `-s`**: Interactively pick a specific version to pin. Without this flag, each project gets the highest compatible version for its bound Godot version.
 
+## `gdio ci`
+
+Adds custom GitHub Actions workflow to the current project for exporting Godot projects.
+
+- `export_pipeline_from_gdio.yml` - Standard export pipeline using gdio
+- `export_pipeline_secure_from_gdio.yml` - Export pipeline with [Godot Secure](https://github.com/KnifeXRage/Godot-Secure) AES-256 script encryption
+
+### Secrets and Variables
+
+On Github navigating to: Settings -> Secrets and variables -> Actions -> New repository secret
+
+| Secret / Variable | Value | Note | Why |
+|-------------------|-------|-------------|---------|
+| `SCRIPT_AES256_ENCRYPTION_KEY` | 64 hex char | `openssl rand -hex 32` or `python -c "import secrets; print(secrets.token_hex(32))"` | AES-256 encryption key for Godot-Secure script protection (secure pipeline only- not required but set it for consistency) |
+| `ANDROID_KEYSTORE` | base64 encoded keystore file | Linux/Macos:`base64 -w 0 mygame.keystore` or Powershell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("mygame.keystore"))` | Android signing keystore for release and debug exports. How to [generate keystore](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html#exporting-for-google-play-store) |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password string |  | Required to open the keystore during Android export |
+| `ANDROID_KEYSTORE_USER` | keystore user/alias string | e.g. `mygame` | Identifies the key entry used for signing the APK |
+
+## `gdio builder`
+
+Build Godot Engine from source. Run from within a Godot source directory.
+
+```bash
+gdio builder clone                           # Shallow clone Godot master
+gdio builder clone --full                    # Full clone with history
+gdio builder clone 4.7.2-stable              # Clone specific tag
+gdio builder                                 # Build editor (auto-detects platform)
+gdio builder --csharp                        # Build editor with C# support
+gdio builder ccache=yes                      # Pass extra args to scons
+gdio builder install                         # Install build dependencies
+gdio builder secure --key <64-hex-chars>     # Apply Godot Secure encryption
+gdio builder template                        # Build all templates
+gdio builder template --windows              # Build Windows templates only
+gdio builder template --linux -j8            # Build Linux templates with parallel jobs
+gdio builder template --visionos             # Build visionOS templates only
+gdio builder template --debug                # Build debug templates only
+gdio builder template --release              # Build release templates only
+gdio builder template --linux use_llvm=yes   # Pass extra scons flags
+```
+
 ## Helper Flags
 
 ```bash

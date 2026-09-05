@@ -1,0 +1,304 @@
+name: gdio Export Pipeline
+
+on:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "{tag}"
+  CSHARP: "{csharp_bool}"
+  ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+  ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+  ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has_windows: ${{ steps.check.outputs.has_windows }}
+      has_linux: ${{ steps.check.outputs.has_linux }}
+      has_macos: ${{ steps.check.outputs.has_macos }}
+      has_web: ${{ steps.check.outputs.has_web }}
+      has_android: ${{ steps.check.outputs.has_android }}
+      has_ios: ${{ steps.check.outputs.has_ios }}
+      has_visionos: ${{ steps.check.outputs.has_visionos }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Detect platforms from export presets
+        id: check
+        shell: bash
+        run: |
+          if [ ! -f export_presets.cfg ]; then
+            echo "No export_presets.cfg found."
+            for p in has_windows has_linux has_macos has_web has_android has_ios has_visionos; do
+              echo "$p=false" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+          has_windows=false; has_linux=false; has_macos=false
+          has_web=false; has_android=false; has_ios=false; has_visionos=false
+          while IFS= read -r line; do
+            val="${line#*\"}"; val="${val%\"*}"
+            case "$val" in
+              "Windows"|"Windows Desktop") has_windows=true ;;
+              "Linux"|"Linux/X11") has_linux=true ;;
+              "macOS"|"Mac OSX") has_macos=true ;;
+              "Web"|"HTML5") has_web=true ;;
+              "Android") has_android=true ;;
+              "iOS") has_ios=true ;;
+              "visionOS") has_visionos=true ;;
+            esac
+          done < <(grep '^platform=' export_presets.cfg)
+          echo "has_windows=$has_windows" >> "$GITHUB_OUTPUT"
+          echo "has_linux=$has_linux" >> "$GITHUB_OUTPUT"
+          echo "has_macos=$has_macos" >> "$GITHUB_OUTPUT"
+          echo "has_web=$has_web" >> "$GITHUB_OUTPUT"
+          echo "has_android=$has_android" >> "$GITHUB_OUTPUT"
+          echo "has_ios=$has_ios" >> "$GITHUB_OUTPUT"
+          echo "has_visionos=$has_visionos" >> "$GITHUB_OUTPUT"
+
+  export-windows:
+    needs: detect
+    if: needs.detect.outputs.has_windows == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        if: env.CSHARP == 'true'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+
+      - name: Install gdio
+        shell: pwsh
+        run: curl.exe -fsSL https://raw.githubusercontent.com/SeremTitus/gdio/main/scripts/install.ps1 | powershell -Command -
+
+      - name: Add gdio to PATH
+        shell: pwsh
+        run: echo "$env:LOCALAPPDATA\gdio\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Add Godot editor
+        run: gdio add ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Bind editor
+        run: gdio bind ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Sync addons
+        run: gdio addons sync
+
+      - name: Download Windows export templates
+        run: gdio templates add ${{ env.GODOT_VERSION }} --windows
+
+      - name: Import project if needed
+        shell: bash
+        run: |
+          if [ ! -d .godot ]; then
+            gdio args --import --headless
+          fi
+
+      - name: Export Windows presets
+        run: gdio build --windows
+        continue-on-error: true
+
+      - name: Package artifacts
+        if: always()
+        run: python .github/workflows/ci_package.py exported_on_windows
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: exported_on_windows
+          path: exported_on_windows/
+          if-no-files-found: warn
+
+  export-linux:
+    needs: detect
+    if: needs.detect.outputs.has_linux == 'true' || needs.detect.outputs.has_web == 'true' || needs.detect.outputs.has_android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        if: env.CSHARP == 'true'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+
+      - name: Install gdio
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/SeremTitus/gdio/main/scripts/install.sh | bash
+
+      - name: Add gdio to PATH
+        shell: bash
+        run: echo "$HOME/.gdio/bin" >> "$GITHUB_PATH"
+
+      - name: Add Godot editor
+        run: gdio add ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Bind editor
+        run: gdio bind ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Sync addons
+        run: gdio addons sync
+
+      - name: Import project if needed
+        shell: bash
+        run: |
+          if [ ! -d .godot ]; then
+            gdio args --import --headless
+          fi
+
+      - name: Download Linux export templates
+        if: needs.detect.outputs.has_linux == 'true'
+        run: gdio templates add ${{ env.GODOT_VERSION }} --linux
+      - name: Export Linux presets
+        if: needs.detect.outputs.has_linux == 'true'
+        run: gdio build --linux
+        continue-on-error: true
+
+      - name: Download Web export templates
+        if: needs.detect.outputs.has_web == 'true'
+        run: gdio templates add ${{ env.GODOT_VERSION }} --web
+      - name: Export Web presets
+        if: needs.detect.outputs.has_web == 'true'
+        run: gdio build --web
+        continue-on-error: true
+
+      - name: Validate Android keystore secrets
+        id: android_keystore
+        if: needs.detect.outputs.has_android == 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$ANDROID_KEYSTORE"
+          echo "::add-mask::$ANDROID_KEYSTORE_PASSWORD"
+          echo "::add-mask::$ANDROID_KEYSTORE_USER"
+          MISSING=0
+          if [ -z "${ANDROID_KEYSTORE:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE secret is not set."
+            MISSING=1
+          fi
+          if [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_PASSWORD secret is not set."
+            MISSING=1
+          fi
+          if [ -z "${ANDROID_KEYSTORE_USER:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_USER secret is not set."
+            MISSING=1
+          fi
+          if [ "$MISSING" -ne 0 ]; then
+            echo "::error::One or more Android keystore secrets are missing. Skipping Android build."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE" | base64 -d > "$RUNNER_TEMP/android_release.keystore"
+          echo "$ANDROID_KEYSTORE" | base64 -d > "$RUNNER_TEMP/android_debug.keystore"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/android_release.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/android_debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$ANDROID_KEYSTORE_USER" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=$ANDROID_KEYSTORE_USER" >> "$GITHUB_ENV"
+          echo "has_android_keystore=true" >> "$GITHUB_OUTPUT"
+          echo "[OK] Android keystore secrets validated and env vars set."
+
+      - name: Download Android export templates
+        if: >-
+          needs.detect.outputs.has_android == 'true' &&
+          steps.android_keystore.outputs.has_android_keystore == 'true'
+        run: gdio templates add ${{ env.GODOT_VERSION }} --android
+      - name: Export Android presets
+        if: >-
+          needs.detect.outputs.has_android == 'true' &&
+          steps.android_keystore.outputs.has_android_keystore == 'true'
+        run: gdio build --android
+        continue-on-error: true
+
+      - name: Package artifacts
+        if: always()
+        run: python .github/workflows/ci_package.py exported_on_linux
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: exported_on_linux
+          path: exported_on_linux/
+          if-no-files-found: warn
+
+  export-macos:
+    needs: detect
+    if: needs.detect.outputs.has_macos == 'true' || needs.detect.outputs.has_ios == 'true' || needs.detect.outputs.has_visionos == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        if: env.CSHARP == 'true'
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+
+      - name: Install gdio
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/SeremTitus/gdio/main/scripts/install.sh | bash
+
+      - name: Add gdio to PATH
+        shell: bash
+        run: echo "$HOME/.gdio/bin" >> "$GITHUB_PATH"
+
+      - name: Add Godot editor
+        run: gdio add ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Bind editor
+        run: gdio bind ${{ env.GODOT_VERSION }} ${{ env.CSHARP == 'true' && '--csharp' || '' }}
+
+      - name: Sync addons
+        run: gdio addons sync
+
+      - name: Download macOS export templates
+        run: gdio templates add ${{ env.GODOT_VERSION }} --macos
+
+      - name: Import project if needed
+        shell: bash
+        run: |
+          if [ ! -d .godot ]; then
+            gdio args --import --headless
+          fi
+
+      - name: Export macOS presets
+        if: needs.detect.outputs.has_macos == 'true'
+        run: gdio build --macos
+        continue-on-error: true
+
+      - name: Download iOS export templates
+        if: needs.detect.outputs.has_ios == 'true'
+        run: gdio templates add ${{ env.GODOT_VERSION }} --ios
+      - name: Export iOS presets
+        if: needs.detect.outputs.has_ios == 'true'
+        run: gdio build --ios
+        continue-on-error: true
+
+      - name: Download visionOS export templates
+        if: needs.detect.outputs.has_visionos == 'true'
+        run: gdio templates add ${{ env.GODOT_VERSION }} --visionos
+      - name: Export visionOS presets
+        if: needs.detect.outputs.has_visionos == 'true'
+        run: gdio build --visionos
+        continue-on-error: true
+
+      - name: Package artifacts
+        if: always()
+        run: python .github/workflows/ci_package.py exported_on_macos
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: exported_on_macos
+          path: exported_on_macos/
+          if-no-files-found: warn

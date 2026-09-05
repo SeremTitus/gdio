@@ -35,13 +35,23 @@ config/name="{}"
     );
     fs::write(&project_file, content).context("Failed to write project.godot")?;
 
+    // Register project
+    super::shared::register_opened_project(
+        config,
+        project_dir.clone(),
+        name.to_string(),
+        &editor.version,
+    )?;
+
+    // Generate GitHub Actions export CI (non-fatal if it fails)
+    if let Err(e) = super::ci::run(&project_dir, config) {
+        eprintln!("Warning: Could not generate CI workflows: {}", e);
+    }
+
     println!("Created project: {}", project_dir.display());
 
     println!("Opening with {}...", editor.name);
     godot::open_project_editor_mode(&editor.path, &project_file)?;
-
-    // Register project
-    super::shared::register_opened_project(config, project_dir, name.to_string(), &editor.version)?;
 
     Ok(())
 }

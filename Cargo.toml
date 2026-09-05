@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "gdio"
 version = "1.0.2-stable"
 edition = "2024"
@@ -27,6 +27,7 @@ arboard = "3"
 ratatui = "0.30.2"
 unicode-width = "0.2.2"
 crossterm = "0.29"
+getrandom = "0.4.3"
 
 [profile.release]
 opt-level = "z"

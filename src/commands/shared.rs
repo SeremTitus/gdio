@@ -40,6 +40,23 @@ impl ProjectContext {
         })
     }
 
+    pub fn from_dir(dir: &std::path::Path, default_name: &str) -> Result<Self> {
+        let cwd = dir.to_path_buf();
+        let project_file = cwd.join("project.godot");
+        if !project_file.exists() {
+            anyhow::bail!("No Godot project found in {}.", cwd.display());
+        }
+        let project_path = cwd.to_string_lossy().to_string();
+        let project_name =
+            project::parse_project_name(&project_file).unwrap_or_else(|| default_name.to_string());
+        Ok(Self {
+            cwd,
+            project_file,
+            project_path,
+            project_name,
+        })
+    }
+
     pub fn bound_editor<'a>(&self, config: &'a Config) -> Option<&'a EditorInfo> {
         config
             .projects

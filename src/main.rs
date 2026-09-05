@@ -272,6 +272,23 @@ enum Commands {
         /// Number of articles to list (default: 5)
         count: Option<usize>,
     },
+
+    /// Generate GitHub Actions export CI workflows
+    Ci,
+
+    /// Build Godot from source (run from Godot source directory)
+    Builder {
+        #[command(subcommand)]
+        action: Option<BuilderAction>,
+
+        /// Build with C# (mono) support
+        #[arg(long)]
+        csharp: bool,
+
+        /// Extra arguments passed to scons
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -394,6 +411,48 @@ enum AddonsAction {
     Search {
         /// Search query
         query: String,
+    },
+}
+
+#[derive(Subcommand)]
+#[command(rename_all = "lowercase")]
+enum BuilderAction {
+    /// Clone the Godot source repository
+    Clone {
+        /// Git tag/branch to checkout (e.g. "4.7.2-stable")
+        tag: Option<String>,
+
+        /// Full clone instead of shallow (slower, allows history access)
+        #[arg(short, long)]
+        full: bool,
+    },
+
+    /// Install build dependencies for the current platform
+    Install,
+
+    /// Apply Godot Secure script encryption to the source
+    Secure {
+        /// AES-256 encryption key (64 hex characters). Generated automatically if not provided.
+        #[arg(short, long)]
+        key: Option<String>,
+    },
+
+    /// Build export templates
+    Templates {
+        #[command(flatten)]
+        platform: PlatformFlags,
+
+        /// Build with C# (mono) support
+        #[arg(long)]
+        csharp: bool,
+
+        /// Build debug templates only
+        #[arg(short, long)]
+        debug: bool,
+
+        /// Build release templates only
+        #[arg(short, long)]
+        release: bool,
     },
 }
 
@@ -598,6 +657,38 @@ async fn main() -> anyhow::Result<()> {
                 commands::news::run(count.unwrap_or(5)).await?;
                 return Ok(());
             }
+            Commands::Ci => {
+                let cwd = std::env::current_dir()?;
+                commands::ci::run(&cwd, &config)?;
+                return Ok(());
+            }
+            Commands::Builder {
+                action,
+                csharp,
+                args,
+            } => match action {
+                None => {
+                    commands::builder::editor::run(csharp, &args).await?;
+                }
+                Some(BuilderAction::Clone { tag, full }) => {
+                    commands::builder::clone::run(tag.as_deref(), full).await?;
+                }
+                Some(BuilderAction::Install) => {
+                    commands::builder::install::run(csharp)?;
+                }
+                Some(BuilderAction::Secure { key }) => {
+                    commands::builder::secure::run(key.as_deref()).await?;
+                }
+                Some(BuilderAction::Templates {
+                    platform,
+                    csharp,
+                    debug,
+                    release,
+                }) => {
+                    commands::builder::templates::run(&platform, csharp, debug, release, &args)
+                        .await?;
+                }
+            },
         },
     }
 
