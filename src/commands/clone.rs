@@ -22,15 +22,13 @@ pub async fn run(
 
     let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
-    if cwd.join("project.godot").exists() {
-        if std::io::stdin().is_terminal() {
-            let proceed = dialoguer::Confirm::new()
-                .with_prompt("Current directory is already a Godot project. Clone here anyway?")
-                .default(false)
-                .interact()?;
-            if !proceed {
-                anyhow::bail!("Aborted.");
-            }
+    if cwd.join("project.godot").exists() && std::io::stdin().is_terminal() {
+        let proceed = dialoguer::Confirm::new()
+            .with_prompt("Current directory is already a Godot project. Clone here anyway?")
+            .default(false)
+            .interact()?;
+        if !proceed {
+            anyhow::bail!("Aborted.");
         }
     }
 
@@ -98,7 +96,7 @@ pub async fn run(
 
                                 if new_phase != phase {
                                     phase = new_phase;
-                                    pb.set_message(format!("{}", phase));
+                                    pb.set_message(phase.to_string());
                                 }
 
                                 if count > 0 && count != total {
@@ -166,17 +164,17 @@ fn parse_progress_line(line: &str) -> Option<(String, u64, u64)> {
             if let Some(pct_end) = rest.find('%') {
                 let pct_str = rest[..pct_end].trim();
                 if let Ok(pct) = pct_str.parse::<f64>() {
-                    if let Some(paren_start) = rest.find('(') {
-                        if let Some(paren_end) = rest[paren_start..].find(')') {
-                            let inside = &rest[paren_start + 1..paren_start + paren_end];
-                            if let Some(slash_pos) = inside.find('/') {
-                                let done_str = &inside[..slash_pos];
-                                let total_str = &inside[slash_pos + 1..];
-                                if let (Ok(done), Ok(total)) =
-                                    (done_str.parse::<u64>(), total_str.parse::<u64>())
-                                {
-                                    return Some((label.to_string(), total, done));
-                                }
+                    if let Some(paren_start) = rest.find('(')
+                        && let Some(paren_end) = rest[paren_start..].find(')')
+                    {
+                        let inside = &rest[paren_start + 1..paren_start + paren_end];
+                        if let Some(slash_pos) = inside.find('/') {
+                            let done_str = &inside[..slash_pos];
+                            let total_str = &inside[slash_pos + 1..];
+                            if let (Ok(done), Ok(total)) =
+                                (done_str.parse::<u64>(), total_str.parse::<u64>())
+                            {
+                                return Some((label.to_string(), total, done));
                             }
                         }
                     }
@@ -194,10 +192,7 @@ fn parse_progress_line(line: &str) -> Option<(String, u64, u64)> {
 fn dir_from_url(url: &str) -> String {
     let url = url.trim_end_matches('/');
     let url = url.strip_suffix(".git").unwrap_or(url);
-    url.rsplit(|c| c == '/' || c == ':')
-        .next()
-        .unwrap_or(url)
-        .to_string()
+    url.rsplit(['/', ':']).next().unwrap_or(url).to_string()
 }
 
 async fn open_project(project_dir: &str, config: &mut Config) -> Result<()> {

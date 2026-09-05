@@ -103,10 +103,7 @@ fn needs_download(
     if !butler_path.exists() {
         return true;
     }
-    match installed_version {
-        Some(_) => false, // version matches (already checked recently or same version)
-        None => true,
-    }
+    installed_version.is_none()
 }
 
 fn find_system_butler() -> Result<PathBuf> {

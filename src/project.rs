@@ -16,21 +16,21 @@ pub fn parse_tags(project_path: &Path) -> Vec<String> {
 }
 
 fn parse_packed_string_array(line: &str) -> Vec<String> {
-    if let Some(start) = line.find('(') {
-        if let Some(end) = line.rfind(')') {
-            let inner = &line[start + 1..end];
-            let mut tags = Vec::new();
-            for s in inner.split(',') {
-                let s = s.trim();
-                if s.starts_with('"') && s.ends_with('"') {
-                    let val = &s[1..s.len() - 1];
-                    if !val.is_empty() {
-                        tags.push(val.to_string());
-                    }
+    if let Some(start) = line.find('(')
+        && let Some(end) = line.rfind(')')
+    {
+        let inner = &line[start + 1..end];
+        let mut tags = Vec::new();
+        for s in inner.split(',') {
+            let s = s.trim();
+            if s.starts_with('"') && s.ends_with('"') {
+                let val = &s[1..s.len() - 1];
+                if !val.is_empty() {
+                    tags.push(val.to_string());
                 }
             }
-            return tags;
         }
+        return tags;
     }
     vec![]
 }
@@ -84,7 +84,7 @@ pub fn write_tags(project_path: &Path, tags: &[String]) -> anyhow::Result<()> {
             lines.insert(app_idx + 1, packed);
         } else {
             // No [application] section — append one at the end
-            if !lines.is_empty() && !lines.last().map_or(true, |l| l.is_empty()) {
+            if !lines.is_empty() && !lines.last().is_none_or(|l| l.is_empty()) {
                 lines.push(String::new());
             }
             lines.push("[application]".to_string());

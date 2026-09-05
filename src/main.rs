@@ -39,12 +39,12 @@ fn completions_install_path(shell: clap_complete::Shell) -> Option<PathBuf> {
         clap_complete::Shell::Bash => {
             if cfg!(target_os = "macos") {
                 // Try Homebrew path first
-                if let Ok(output) = std::process::Command::new("brew").arg("--prefix").output() {
-                    if output.status.success() {
-                        let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        let path = PathBuf::from(format!("{prefix}/etc/bash_completion.d/gdio"));
-                        return Some(path);
-                    }
+                if let Ok(output) = std::process::Command::new("brew").arg("--prefix").output()
+                    && output.status.success()
+                {
+                    let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    let path = PathBuf::from(format!("{prefix}/etc/bash_completion.d/gdio"));
+                    return Some(path);
                 }
                 Some(home.join(".local/share/bash-completion/completions/gdio"))
             } else {

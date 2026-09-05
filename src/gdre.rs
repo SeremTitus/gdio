@@ -59,7 +59,7 @@ async fn fetch_latest_release() -> Result<GhRelease> {
         .context("Failed to parse GDRE Tools release info")
 }
 
-fn find_platform_asset<'a>(release: &'a GhRelease) -> Option<&'a GhAsset> {
+fn find_platform_asset(release: &GhRelease) -> Option<&GhAsset> {
     let pattern = platform_asset_pattern();
     if pattern.is_empty() {
         return None;
@@ -93,9 +93,9 @@ async fn download_file(url: &str, dest: &Path) -> Result<()> {
     let pb = ProgressBar::new(total_size);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template(&format!(
-                "{{msg}} [{{elapsed_precise}}] [{{bar:40.cyan/blue}}] {{bytes}}/{{total_bytes}} ({{bytes_per_sec}})"
-            ))
+            .template(
+                "{msg} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec})",
+            )
             .unwrap_or_else(|_| ProgressStyle::default_bar())
             .progress_chars("=>-"),
     );

@@ -23,8 +23,7 @@ pub async fn run(count: usize) -> Result<()> {
     let count = count.min(items.len());
 
     println!();
-    for i in 0..count {
-        let item = items[i];
+    for (i, item) in items.iter().enumerate().take(count) {
         let title = extract_tag(item, "title").unwrap_or_default();
         let link = extract_tag(item, "link").unwrap_or_default();
         let summary = extract_tag(item, "summary").unwrap_or_default();

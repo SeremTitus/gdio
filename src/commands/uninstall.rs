@@ -119,15 +119,14 @@ fn remove_completions() {
         home.join(".local/share/bash-completion/completions/gdio"),
         home.join(".bash_completion.d/gdio"),
     ];
-    if cfg!(target_os = "macos") {
-        if let Ok(output) = std::process::Command::new("brew").arg("--prefix").output() {
-            if output.status.success() {
-                let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                bash_paths.push(PathBuf::from(format!(
-                    "{prefix}/etc/bash_completion.d/gdio"
-                )));
-            }
-        }
+    if cfg!(target_os = "macos")
+        && let Ok(output) = std::process::Command::new("brew").arg("--prefix").output()
+        && output.status.success()
+    {
+        let prefix = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        bash_paths.push(PathBuf::from(format!(
+            "{prefix}/etc/bash_completion.d/gdio"
+        )));
     }
     if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
         bash_paths.push(PathBuf::from(format!(

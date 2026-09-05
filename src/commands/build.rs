@@ -158,8 +158,7 @@ async fn ensure_templates(version: &str, platform: &str, csharp: bool, debug: bo
             templates::api::TemplateFilter::Release
         };
 
-        let required =
-            templates::api::platform_template_files(&platform.to_string(), template_filter);
+        let required = templates::api::platform_template_files(platform, template_filter);
 
         if required.iter().all(|item| platforms.contains(*item)) {
             return Ok(());
